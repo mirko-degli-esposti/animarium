@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="it">
+<meta charset="utf-8">
+<title>Animarium — smoke test DuckDB-WASM</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<!--
+  Animarium, passo 2 — v3
+
+  Novita':
+
+  1. **Modalita' isolata** (spunta, oppure ?isolato=1). Ricrea DuckDB da zero
+     prima di ogni query, cosi' nessuna scalda la successiva. Costa ~0,7 s di
+     inizializzazione per query e toglie di mezzo quattro ricariche a mano.
+
+  2. **Q6**, filtro su una zona: verifica se l'ordinamento per `zona, sezione`
+     fa potare i row group sulla dimensione spaziale, che e' il filtro piu'
+     frequente dell'interfaccia.
+
+  3. **Attese trasmesse al server**: ogni marcatore porta con se' il valore
+     previsto, e serve_range.py stampa misurato contro atteso. Una previsione
+     scritta prima della misura vale piu' di un numero commentato dopo.
+
+  Le attese sono tarate sul file riordinato (3,12 MB, 10 row group,
+  --drop-avq-raw): blocco A 0,675 MB · blocco AVQ 1,411 · blocco pesanti 0,980.
+  Il tetto di ogni query e' la dimensione del suo blocco, non del file.
+-->
+
+<style>
+  :root { color-scheme: light; }
+  body { font: 15px/1.55 ui-sans-serif, system-ui, sans-serif;
+         max-width: 64rem; margin: 2rem auto; padding: 0 1.5rem;
+         background: #fbfaf7; color: #1b1a17; }
+  h1 { font-size: 1.4rem; margin-bottom: .2rem; }
+  .sub { color: #6b6862; margin-top: 0; }
+  .cfg { display: grid; grid-template-columns: auto 1fr; gap: .5rem .8rem;
+         align-items: center; margin: 1.2rem 0; }
+  .cfg label { font-size: 13px; color: #6b6862; }
+  .riga { display: flex; gap: .8rem; align-items: center; margin: 1rem 0; }
+  input[type=text] { font: 13px ui-monospace, monospace; padding: .4rem .5rem;
+                     border: 1px solid #cfcabf; border-radius: 3px;
+                     width: 100%; background: #fff; }
+  button { font: 500 14px inherit; padding: .45rem 1.1rem; cursor: pointer;
+           border: 1px solid #1b1a17; background: #1b1a17; color: #fbfaf7;
+           border-radius: 3px; }
+  button:disabled { opacity: .4; cursor: default; }
+  .banner { padding: .7rem .9rem; border-radius: 3px; margin: 1rem 0;
+            font-size: 14px; }
+  .ok   { background: #e8f0e6; border: 1px solid #9dbb94; }
+  .ko   { background: #f6e4e2; border: 1px solid #c58e86; }
+  .info { background: #eceff3; border: 1px solid #a9b4c0; }
+  table { border-collapse: collapse; width: 100%; margin-top: 1rem;
+          font-size: 14px; }
+  th, td { text-align: left; padding: .38rem .6rem;
+           border-bottom: 1px solid #e3ded3; vertical-align: top; }
+  th { font-weight: 600; font-size: 12px; text-transform: uppercase;
+       letter-spacing: .04em; color: #6b6862; }
+  td.n { text-align: right; font: 13px ui-monospace, monospace;
+         font-variant-numeric: tabular-nums; }
+  td.q { font: 12px ui-monospace, monospace; color: #6b6862; }
+  pre { background: #f2efe8; padding: .8rem; border-radius: 3px;
+        font-size: 12.5px; overflow-x: auto; white-space: pre-wrap; }
+  .attesa { color: #6b6862; font-size: 13px; }
+  code { background: #f2efe8; padding: .05rem .3rem; border-radius: 2px;
+         font-size: 12.5px; }
+</style>
+
+<h1>Animarium — smoke test DuckDB-WASM</h1>
+<p class="sub">Passo 2. Potatura delle colonne, potatura dei row group,
+effetto della disposizione fisica del file.</p>
+
+<div class="cfg">
+  <label for="url">Parquet</label>
+  <input type="text" id="url" value="../bundle/comuni/036023/pop.parquet">
+  <label for="zona">Zona per Q6</label>
+  <input type="text" id="zona" value="36023001">
+</div>
+
+<div class="riga">
+  <button id="run">Esegui</button>
+  <label><input type="checkbox" id="isolato"> una query per volta, con
+    DuckDB ricreato ogni volta</label>
+</div>
+
+<div id="pre"></div>
+<div id="stato"></div>
+<table id="out" hidden>
+  <thead><tr>
+    <th>#</th><th>query</th><th>colonne toccate</th>
+    <th style="text-align:right">righe</th>
+    <th style="text-align:right">atteso</th>
+    <th style="text-align:right">freddo</th>
+    <th style="text-align:right">caldo</th>
+  </tr></thead>
+  <tbody></tbody>
+</table>
+<div id="nota"></div>
+
+<script type="module">
+// Se l'import fallisce con 404, sostituisci la versione con una presente su
+// https://www.npmjs.com/package/@duckdb/duckdb-wasm
+const DUCKDB = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm";
+
+const $ = (id) => document.getElementById(id);
+
+function log(el, cls, html) {
+  const d = document.createElement("div");
+  d.className = "banner " + cls;
+  d.innerHTML = html;
+  $(el).appendChild(d);
+}
+
+const DEMO = "zona, sesso, eta, istruzione, cittadinanza";
+
+// `atteso` in MB, incluso il footer (~0,08 MB con 10 row group).
+// null = nessuna previsione.
+function queries(zona) {
+  return [
+    {
+      id: "Q0",
+      nome: "count(*)",
+      col: "nessuna — solo metadati",
+      atteso: 0.08,
+      note: "solo il footer",
+      sql: "SELECT count(*) AS n FROM 'pop.parquet'"
+    },
+    {
+      id: "Q1",
+      nome: "marginali demografici",
+      col: "sesso, eta, istruzione",
+      atteso: 0.5,
+      note: "parte del blocco A, che pesa 0,675 in tutto",
+      sql: `SELECT sesso, eta, istruzione, count(*) AS n
+            FROM 'pop.parquet' GROUP BY 1, 2, 3`
+    },
+    {
+      id: "Q2",
+      nome: "marginali per zona",
+      col: DEMO,
+      atteso: 0.7,
+      note: "il blocco A quasi per intero",
+      sql: `SELECT zona, sesso, eta, istruzione, cittadinanza, count(*) AS n
+            FROM 'pop.parquet' GROUP BY 1, 2, 3, 4, 5`
+    },
+    {
+      id: "Q3",
+      nome: "potatura row group — filtrata su id",
+      col: DEMO + ", id",
+      atteso: 0.15,
+      note: "un row group su dieci",
+      sql: `SELECT zona, sesso, eta, istruzione, cittadinanza, count(*) AS n
+            FROM 'pop.parquet' WHERE id < 20000 GROUP BY 1, 2, 3, 4, 5`
+    },
+    {
+      id: "Q3N",
+      nome: "controllo di Q3, senza filtro",
+      col: DEMO + ", id",
+      atteso: 0.7,
+      note: "era 1,674 prima che id fosse delta-encoded",
+      sql: `SELECT zona, sesso, eta, istruzione, cittadinanza,
+                   count(*) AS n, min(id) AS id_min
+            FROM 'pop.parquet' GROUP BY 1, 2, 3, 4, 5`
+    },
+    {
+      id: "Q4",
+      nome: "fiducia nel Comune per zona",
+      col: "zona, PUNTIFI10_num",
+      atteso: 0.6,
+      note: "PREVISIONE DEBOLE: le AVQ ora sono 21 colonne contigue " +
+            "da 1,411 MB. Se sale oltre 1 MB il blocco va spezzato",
+      sql: `SELECT zona, avg(PUNTIFI10_num) AS m, count(PUNTIFI10_num) AS n
+            FROM 'pop.parquet' GROUP BY 1`
+    },
+    {
+      id: "Q5",
+      nome: "baricentro",
+      col: "lon, lat",
+      atteso: 0.7,
+      note: "era 2,297 con le colonne sparse; il blocco pesanti ora " +
+            "pesa 0,980 in tutto, quindi non puo' superarlo di molto",
+      sql: "SELECT avg(lon) AS lon, avg(lat) AS lat FROM 'pop.parquet'"
+    },
+    {
+      id: "Q6",
+      nome: "filtro su una zona",
+      col: DEMO,
+      atteso: 0.2,
+      note: "zona " + zona + ". Con l'ordinamento per zona dovrebbe " +
+            "toccare due row group su dieci. Da confrontare con Q2",
+      sql: `SELECT sesso, eta, istruzione, count(*) AS n
+            FROM 'pop.parquet' WHERE zona = '${zona}' GROUP BY 1, 2, 3`
+    }
+  ];
+}
+
+function selezione(zona) {
+  const tutte = queries(zona);
+  const only = new URLSearchParams(location.search).get("only");
+  if (!only) return tutte;
+  const voluti = only.split(",").map((s) => s.trim().toUpperCase());
+  const scelte = tutte.filter((q) => voluti.includes(q.id));
+  return scelte.length ? scelte : tutte;
+}
+
+async function preflight(url) {
+  let abs;
+  try {
+    abs = new URL(url, location.href).href;
+  } catch (e) {
+    log("pre", "ko", "Percorso non valido: <code>" + url + "</code>");
+    return null;
+  }
+  let r;
+  try {
+    r = await fetch(abs, { headers: { Range: "bytes=0-99" } });
+  } catch (e) {
+    log("pre", "ko",
+      "<b>Il file non e' raggiungibile.</b> " + e +
+      "<br>Controlla il percorso: <code>" + abs + "</code>");
+    return null;
+  }
+  if (r.status === 206) {
+    const cr = r.headers.get("content-range");
+    const tot = cr ? Number(cr.split("/")[1]) : NaN;
+    log("pre", "ok",
+      "<b>Range supportato</b> (206)." +
+      (isFinite(tot) ? " File: " + (tot / 1048576).toFixed(2) + " MB." : ""));
+    return abs;
+  }
+  if (r.status === 200) {
+    log("pre", "ko",
+      "<b>Il server ignora le richieste Range</b> (200 invece di 206)." +
+      "<br>Il test darebbe un falso negativo. Usa " +
+      "<code>python build/serve_range.py</code>.");
+    return null;
+  }
+  log("pre", "ko", "Risposta inattesa dal server: " + r.status);
+  return null;
+}
+
+async function marca(nome, atteso) {
+  let u = "/__mark?q=" + encodeURIComponent(nome);
+  if (atteso !== undefined && atteso !== null) u += "&atteso=" + atteso;
+  try { await fetch(u); } catch (e) { /* il marcatore e' un lusso */ }
+}
+
+let vivo = null;
+
+async function smonta() {
+  if (!vivo) return;
+  try { await vivo.conn.close(); } catch (e) {}
+  try { await vivo.db.terminate(); } catch (e) {}
+  try { vivo.worker.terminate(); } catch (e) {}
+  vivo = null;
+}
+
+async function crea(abs) {
+  const duckdb = await import(DUCKDB);
+  const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
+  const wurl = URL.createObjectURL(new Blob(
+    ['importScripts("' + bundle.mainWorker + '");'],
+    { type: "text/javascript" }
+  ));
+  const worker = new Worker(wurl);
+  const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
+  await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+  URL.revokeObjectURL(wurl);
+  const conn = await db.connect();
+  await db.registerFileURL(
+    "pop.parquet", abs, duckdb.DuckDBDataProtocol.HTTP, false);
+  vivo = { db: db, conn: conn, worker: worker };
+  return conn;
+}
+
+async function main() {
+  $("run").disabled = true;
+  $("pre").innerHTML = "";
+  $("stato").innerHTML = "";
+  $("nota").innerHTML = "";
+  document.querySelector("#out tbody").innerHTML = "";
+  $("out").hidden = true;
+
+  await smonta();
+
+  const abs = await preflight($("url").value.trim());
+  if (!abs) { $("run").disabled = false; return; }
+  await marca("(preflight)");
+
+  const isolato = $("isolato").checked ||
+    new URLSearchParams(location.search).get("isolato") === "1";
+  const lista = selezione($("zona").value.trim());
+
+  log("stato", "info",
+    (isolato
+      ? "<b>Modalita' isolata</b>: DuckDB viene ricreato prima di ogni " +
+        "query, quindi nessuna scalda la successiva. E' la condizione in " +
+        "cui le attese sono valide."
+      : "<b>Sessione piena</b>: le query si scaldano a vicenda, come " +
+        "nell'applicazione vera. Le attese qui non valgono.") +
+    "<br>Query: <b>" + lista.map((q) => q.id).join(", ") + "</b>");
+
+  let conn = null;
+  let tInit = 0;
+  if (!isolato) {
+    const t0 = performance.now();
+    try {
+      conn = await crea(abs);
+    } catch (e) {
+      log("stato", "ko",
+        "<b>Inizializzazione fallita.</b> " + e +
+        "<br>Se e' un 404 sul modulo, cambia la versione in cima allo script.");
+      $("run").disabled = false;
+      return;
+    }
+    tInit = performance.now() - t0;
+    await marca("init DuckDB");
+  }
+
+  $("out").hidden = false;
+  const tb = document.querySelector("#out tbody");
+
+  for (const q of lista) {
+    if (isolato) {
+      await smonta();
+      const t0 = performance.now();
+      try {
+        conn = await crea(abs);
+      } catch (e) {
+        log("stato", "ko", "<b>Init fallita su " + q.id + ".</b> " + e);
+        break;
+      }
+      tInit = performance.now() - t0;
+      await marca("init per " + q.id);
+    }
+
+    let righe = 0;
+    let errore = null;
+
+    const t1 = performance.now();
+    try {
+      const res = await conn.query(q.sql);
+      righe = res.numRows;
+    } catch (e) {
+      errore = String(e);
+    }
+    const freddo = performance.now() - t1;
+    await marca(q.id + " freddo — " + q.nome, q.atteso);
+
+    const t2 = performance.now();
+    try { await conn.query(q.sql); } catch (e) {}
+    const caldo = performance.now() - t2;
+    await marca(q.id + " caldo");
+
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td class="q">' + q.id + "</td>" +
+      "<td>" + q.nome + '<div class="attesa">' + q.note + "</div></td>" +
+      '<td class="q">' + q.col + "</td>" +
+      '<td class="n">' + (errore ? "—" : righe.toLocaleString("it")) + "</td>" +
+      '<td class="n">' +
+        (q.atteso == null ? "—" : q.atteso.toFixed(2) + " MB") + "</td>" +
+      '<td class="n">' + freddo.toFixed(0) + " ms</td>" +
+      '<td class="n">' + caldo.toFixed(0) + " ms</td>";
+    tb.appendChild(tr);
+
+    if (errore) {
+      const e2 = document.createElement("tr");
+      e2.innerHTML = '<td colspan="7"><pre>' + errore + "</pre></td>";
+      tb.appendChild(e2);
+    }
+  }
+
+  log("nota", "info",
+    "Inizializzazione: <b>" + (tInit / 1000).toFixed(2) + " s</b>" +
+    (isolato ? " (l'ultima delle " + lista.length + ")" : "") + ". " +
+    "Il peso del modulo si legge nel pannello di rete filtrando su " +
+    "<code>jsdelivr</code>.<br><br>" +
+    "<b>I byte, e il confronto con le attese, stanno nel terminale di " +
+    "<code>serve_range.py</code></b>: le richieste partono dal worker e " +
+    "non compaiono nel Resource Timing di questa pagina.<br><br>" +
+    "I tre confronti che contano: <b>Q3 contro Q3N</b> (potatura per " +
+    "riga), <b>Q6 contro Q2</b> (potatura spaziale, cioe' se l'ordinamento " +
+    "per zona serve), <b>Q4</b> in assoluto (se supera 1 MB il blocco AVQ " +
+    "va spezzato in fiducia e sanita').");
+
+  $("run").disabled = false;
+}
+
+$("run").addEventListener("click", main);
+if (new URLSearchParams(location.search).get("isolato") === "1") {
+  $("isolato").checked = true;
+}
+</script>
+</html>

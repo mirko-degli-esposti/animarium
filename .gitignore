@@ -1,0 +1,21 @@
+# dati generati: ricostruibili con to_parquet.py
+bundle/
+
+# uscite dei diagnostici
+viol_*.csv
+residui_*.csv
+donor_*.csv
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Observable Framework, quando ci sara'
+node_modules/
+.observablehq/cache/
+dist/
+
+# scarti
+*.bak
+*~
