@@ -5,6 +5,7 @@ bundle/
 viol_*.csv
 residui_*.csv
 donor_*.csv
+celle_*.csv
 
 # Python
 __pycache__/

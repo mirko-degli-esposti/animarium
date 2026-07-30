@@ -215,10 +215,22 @@ def main():
 
     os.chdir(args.dir)
     srv = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    base = f"http://localhost:{args.port}"
+
     print(f"radice   {os.getcwd()}")
-    print(f"in ascolto su http://localhost:{args.port}/")
-    print(f"smoke test:    http://localhost:{args.port}/build/smoke_duckdb.html")
-    print("Range supportato. Ctrl-C stampa il riepilogo e chiude.")
+    print(f"in ascolto su {base}/")
+    print()
+    pagine = [
+        ("build/pannello_marginali.html", "Animarium — marginali e mappa"),
+        ("build/smoke_duckdb.html",       "smoke test DuckDB-WASM"),
+    ]
+    for percorso, che in pagine:
+        segno = " " if os.path.exists(percorso) else "?"
+        print(f"  {segno} {che:<32} {base}/{percorso}")
+    if not os.path.exists("bundle/comuni.json"):
+        print("\n  ? bundle/comuni.json assente: il menu delle citta' "
+              "restera' vuoto")
+    print("\nRange: supportato. Ctrl-C stampa il riepilogo e chiude.")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

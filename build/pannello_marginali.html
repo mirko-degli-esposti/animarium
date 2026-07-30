@@ -1,0 +1,962 @@
+<!doctype html>
+<html lang="it">
+<meta charset="utf-8">
+<title>Animarium — marginali</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<!--
+  Animarium — marginali, mappa navigabile, scheda individuo.   v6
+
+  Novita':
+
+  1. **Web Mercator.** La v5 usava una proiezione equirettangolare, che a
+     scala urbana e' accurata ma NON si allinea alle tiles. Passare a Mercator
+     era necessario per la base cartografica ed e' comunque la scelta giusta.
+
+  2. **Zoom e pan.** Rotella per lo zoom sul cursore, trascinamento per lo
+     spostamento, "adatta" per tornare all'inquadratura piena. Il riconoscimento
+     del clic distingue un clic fermo da un trascinamento entro 4 px, cosi' la
+     scheda dell'individuo non si apre per sbaglio mentre si naviga.
+
+  3. **Base cartografica opzionale.** OSM e CARTO non chiedono chiavi API ma
+     sono servizi esterni: violano la condizione di §7.3 che tiene il progetto
+     pubblicabile senza dipendenze. Per l'uso interno vanno bene; per la rete
+     la strada e' un estratto .pmtiles di Protomaps servito da noi. Il default
+     resta "nessuna", cosi' si vede sempre che i dati stanno in piedi da soli.
+
+  4. **Risoluzione della griglia** regolabile: la quota si ricalcola su celle
+     piu' o meno fini. Richiede una nuova query, che costa quanto il blocco A.
+-->
+
+<style>
+  :root {
+    color-scheme: light;
+    --sfondo: #fbfaf7; --inchiostro: #1b1a17; --tenue: #6b6862;
+    --linea: #e3ded3; --accento: #7c4a2d; --banda: #e4e8ee;
+  }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.5 ui-sans-serif, system-ui, sans-serif;
+         margin: 0; background: var(--sfondo); color: var(--inchiostro); }
+  header { padding: 1.1rem 1.5rem .8rem; border-bottom: 1px solid var(--linea);
+           display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+  h1 { font: 600 1.25rem/1.2 Georgia, "Times New Roman", serif; margin: 0; }
+  .sub { color: var(--tenue); font-size: 13px; }
+  select { font: 500 13px inherit; padding: .25rem .4rem; background: #fff;
+           border: 1px solid #cfcabf; border-radius: 3px; }
+  header select { font-size: 14px; padding: .3rem .5rem; }
+
+  .barra-stato { display: flex; flex-wrap: wrap; gap: .5rem .9rem;
+                 align-items: center; padding: .7rem 1.5rem;
+                 border-bottom: 1px solid var(--linea); font-size: 13px; }
+  .cifra { font: 600 13px ui-monospace, monospace;
+           font-variant-numeric: tabular-nums; }
+  .pillola { display: inline-flex; align-items: center; gap: .4rem;
+             background: var(--accento); color: var(--sfondo);
+             border-radius: 999px; padding: .18rem .6rem; font-size: 12px; }
+  .pillola button { all: unset; cursor: pointer; opacity: .75; font-weight: 700; }
+  .attrezzi { margin-left: auto; display: flex; gap: .4rem; flex-wrap: wrap; }
+  button.az { font: 500 12.5px inherit; padding: .3rem .7rem; cursor: pointer;
+              border: 1px solid var(--inchiostro); background: transparent;
+              color: var(--inchiostro); border-radius: 3px; }
+  button.az[aria-pressed=true] { background: var(--inchiostro); color: var(--sfondo); }
+
+  .legenda { padding: .6rem 1.5rem; font-size: 12.5px; color: var(--tenue);
+             border-bottom: 1px solid var(--linea);
+             display: flex; gap: 1.6rem; flex-wrap: wrap; align-items: center; }
+  .campione { display: inline-block; width: 40px; height: 13px;
+              position: relative; vertical-align: -2px; margin-right: .35rem;
+              background: #f0ece3; }
+  .campione i { position: absolute; inset: 0 45% 0 0; background: var(--accento); }
+  .campione b { position: absolute; top: -3px; bottom: -3px; left: 62%;
+                width: 0; border-left: 2px solid var(--inchiostro); }
+  .campione b::before { content: ""; position: absolute; left: -4px; top: -5px;
+                        border: 4px solid transparent;
+                        border-top-color: var(--inchiostro); }
+
+  #zonaMappa { padding: 1rem 1.5rem 0; position: relative; }
+  .mappa-cima { display: flex; gap: .55rem; align-items: center;
+                flex-wrap: wrap; margin-bottom: .5rem; font-size: 12.5px;
+                color: var(--tenue); }
+  #tela { width: 100%; height: 520px; display: block; background: #f4f1ea;
+          border: 1px solid var(--linea); border-radius: 3px;
+          cursor: grab; touch-action: none; }
+  #tela.trascino { cursor: grabbing; }
+  .scala { display: flex; align-items: center; gap: .35rem; font-size: 11.5px; }
+  .scala span { display: inline-block; width: 16px; height: 11px; }
+
+  #scheda { position: absolute; top: 3.9rem; right: 2rem; width: 23rem;
+            max-height: 440px; overflow: auto; background: var(--sfondo);
+            border: 1px solid var(--inchiostro); border-radius: 3px;
+            padding: .7rem .85rem; font-size: 12.5px;
+            box-shadow: 0 3px 16px rgba(0,0,0,.15); }
+  #scheda .avvertenza { background: var(--inchiostro); color: var(--sfondo);
+            font: 600 10.5px ui-monospace, monospace; letter-spacing: .06em;
+            padding: .25rem .5rem; border-radius: 2px; margin-bottom: .5rem; }
+  #scheda h3 { font: 600 11px/1.2 inherit; text-transform: uppercase;
+            letter-spacing: .05em; color: var(--tenue); margin: .7rem 0 .25rem; }
+  #scheda .cmp { display: grid; grid-template-columns: 1.2rem 8rem 1fr;
+            gap: .15rem .4rem; padding: .05rem 0; }
+  #scheda .cmp em { font-style: normal; color: var(--tenue); }
+  #scheda .cmp b { font-weight: 600; }
+  #scheda .persona { margin-top: .7rem; padding-top: .55rem;
+            border-top: 1px solid var(--linea); color: var(--tenue);
+            font-style: italic; line-height: 1.45; }
+  .cls { font: 11px ui-monospace, monospace; text-align: center; }
+  #scheda .chiudi { position: absolute; top: .45rem; right: .55rem;
+            cursor: pointer; color: var(--tenue); font-weight: 700; }
+
+  main { padding: 1.2rem 1.5rem 4rem; }
+  .griglia { display: grid; gap: 1.7rem 2rem;
+             grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  .pannello h2 { font: 600 13px/1.2 inherit; margin: 0 0 .1rem;
+                 text-transform: uppercase; letter-spacing: .05em; }
+  .pannello .nota { color: var(--tenue); font-size: 11.5px; margin-bottom: .55rem;
+                    display: flex; justify-content: space-between; gap: .5rem; }
+  .pannello .nota a { color: var(--tenue); cursor: pointer;
+                      text-decoration: underline; }
+  .senza-rif h2 { color: var(--tenue); }
+
+  .riga { display: grid; grid-template-columns: 11rem 1fr 3.8rem;
+          align-items: center; gap: .5rem; padding: .16rem 0;
+          cursor: pointer; border-radius: 2px; }
+  .riga:hover { background: #f2efe8; }
+  .riga.attiva .et { font-weight: 700; }
+  .et { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis;
+        white-space: nowrap; }
+  .val { font: 12px ui-monospace, monospace; text-align: right;
+         font-variant-numeric: tabular-nums; }
+  .traccia { position: relative; height: 14px; background: #f0ece3;
+             border-radius: 1px; }
+  .traccia i { position: absolute; top: 0; bottom: 0; left: 0;
+               background: var(--accento); border-radius: 1px; }
+  .traccia b { position: absolute; top: -4px; bottom: -4px; width: 0;
+               border-left: 2px solid var(--inchiostro); z-index: 2; }
+  .traccia b::before { content: ""; position: absolute; left: -4px; top: -5px;
+                       border: 4px solid transparent;
+                       border-top-color: var(--inchiostro); }
+  .traccia .rif { position: absolute; top: 50%; width: 9px; height: 9px;
+                  margin: -4.5px 0 0 -4.5px; background: var(--inchiostro);
+                  transform: rotate(45deg); z-index: 4; }
+  .traccia.neutra b { opacity: .28; }
+  .traccia .banda { position: absolute; top: 0; bottom: 0; background: var(--banda); }
+  .traccia .zero { position: absolute; top: -4px; bottom: -4px; width: 0;
+                   border-left: 1.5px solid #9c968a; z-index: 2; }
+
+  .messaggio { padding: .8rem 1rem; border-radius: 3px; font-size: 14px;
+               margin: 1rem 1.5rem; background: var(--banda);
+               border: 1px solid #a9b4c0; }
+  .errore { background: #f6e4e2; border-color: #c58e86; }
+  dialog { border: 1px solid var(--inchiostro); border-radius: 4px;
+           max-width: 54rem; width: 90%; background: var(--sfondo); }
+  dialog textarea { width: 100%; height: 22rem; font: 12px ui-monospace,
+                    monospace; border: 1px solid var(--linea); padding: .6rem; }
+</style>
+
+<header>
+  <h1>Animarium</h1>
+  <select id="citta"></select>
+  <span class="sub" id="sottotitolo">caricamento…</span>
+</header>
+
+<div class="barra-stato" id="stato" hidden>
+  <span><span class="cifra" id="n-sel">—</span> sintetici</span>
+  <span id="box-reale" hidden>· censimento <span class="cifra" id="n-rea">—</span>
+    <span class="cifra" id="n-sca"></span></span>
+  <span><span class="cifra" id="n-pct">—</span> della citta'</span>
+  <span id="pillole"></span>
+  <span class="attrezzi">
+    <button class="az" id="btn-mappa" aria-pressed="false">mappa</button>
+    <button class="az" id="btn-delta" aria-pressed="false">scarti Δ</button>
+    <button class="az" id="btn-csv">CSV</button>
+    <button class="az" id="btn-tex">LaTeX</button>
+    <button class="az" id="btn-reset">azzera</button>
+  </span>
+</div>
+
+<div class="legenda" id="legenda" hidden>
+  <span><span class="campione"><i></i><b></b></span>
+    <b style="color:var(--inchiostro)">barra</b> sottopopolazione ·
+    <b style="color:var(--inchiostro)">tacca</b> citta' intera ·
+    <b style="color:var(--inchiostro)">rombo</b> censimento</span>
+  <span>scarto dalla tacca = <b style="color:var(--inchiostro)">associazione</b> ·
+    scarto dal rombo = <b style="color:var(--inchiostro)">errore del modello</b></span>
+</div>
+
+<div id="zonaMappa" hidden>
+  <div class="mappa-cima">
+    <select id="modo">
+      <option value="quota">quota — frazione del filtro sul totale locale</option>
+      <option value="punti">punti — individui campionati, cliccabili</option>
+    </select>
+    <select id="fondo">
+      <option value="">nessuna base</option>
+      <option value="carto" selected>base chiara (CARTO)</option>
+      <option value="osm">OpenStreetMap</option>
+    </select>
+    <select id="risoluzione">
+      <option value="45">celle grosse</option>
+      <option value="70" selected>celle medie</option>
+      <option value="110">celle fini</option>
+    </select>
+    <select id="capPunti" hidden>
+      <option>10000</option><option selected>30000</option>
+      <option>60000</option><option>120000</option>
+    </select>
+    <button class="az" id="btn-adatta">adatta</button>
+    <span id="mappaNota"></span>
+    <span class="scala" id="mappaScala"></span>
+  </div>
+  <canvas id="tela"></canvas>
+  <div id="scheda" hidden></div>
+</div>
+
+<main>
+  <div id="avvisi"></div>
+  <div class="griglia" id="griglia"></div>
+</main>
+
+<dialog id="finestra">
+  <form method="dialog" style="display:flex;flex-direction:column;gap:.6rem">
+    <strong id="finestra-tit"></strong>
+    <textarea id="finestra-txt" readonly></textarea>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end">
+      <button class="az" type="button" id="btn-copia">copia</button>
+      <button class="az" value="chiudi">chiudi</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module">
+const DUCKDB = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm";
+const P = new URLSearchParams(location.search);
+const COMUNE = P.get("comune") || "036023";
+const BASE = `../bundle/comuni/${COMUNE}/`;
+
+const $ = (id) => document.getElementById(id);
+const pct = (x) => (x * 100).toFixed(1).replace(".", ",") + "%";
+const pct2 = (x) => (x * 100).toFixed(2).replace(".", ",");
+const num = (n) => Math.round(n).toLocaleString("it-IT");
+
+let manifest, RIF = null, conn, attivi = new Map(), delta = false, ultimo = null;
+let mappaOn = false, modo = "quota", geo = null, baseXY = null, hit = null;
+let vista = null, ultimoDati = null, ultimaQuota = 0;
+
+function avviso(cls, html) {
+  const d = document.createElement("div");
+  d.className = "messaggio " + cls;
+  d.innerHTML = html;
+  $("avvisi").appendChild(d);
+}
+
+/* ---------- URL -------------------------------------------------------- */
+function leggiURL() {
+  attivi = new Map();
+  for (const a of manifest.attributi) {
+    const v = P.get(a.nome);
+    if (v) attivi.set(a.nome, new Set(v.split("~")));
+  }
+  delta = P.get("delta") === "1";
+  mappaOn = P.get("mappa") === "1";
+  modo = P.get("modo") === "punti" ? "punti" : "quota";
+}
+function scriviURL() {
+  const p = new URLSearchParams();
+  p.set("comune", COMUNE);
+  for (const [k, s] of attivi) if (s.size) p.set(k, [...s].join("~"));
+  if (delta) p.set("delta", "1");
+  if (mappaOn) { p.set("mappa", "1"); p.set("modo", modo); }
+  history.replaceState(null, "", "?" + p.toString());
+}
+
+/* ---------- riferimento censuario -------------------------------------- */
+function trovaBlocco(serve) {
+  if (!RIF) return null;
+  const c = RIF.blocchi.filter(
+    (b) => b.completo && [...serve].every((v) => b.vars.includes(v)));
+  return c.length ? c.reduce((a, b) => (b.vars.length < a.vars.length ? b : a)) : null;
+}
+function marginaleReale(A, filtri) {
+  const b = trovaBlocco(new Set([...filtri.keys(), A]));
+  if (!b) return null;
+  const iA = b.vars.indexOf(A);
+  const idx = [...filtri.keys()].map((k) => [b.vars.indexOf(k), filtri.get(k)]);
+  const conta = new Map();
+  for (const c of b.celle) {
+    let ok = true;
+    for (const [i, s] of idx) if (!s.has(c.k[i])) { ok = false; break; }
+    if (ok) conta.set(c.k[iA], (conta.get(c.k[iA]) || 0) + c.n);
+  }
+  return { blocco: b, conta };
+}
+function totaleReale(filtri) {
+  if (!RIF) return null;
+  if (!filtri.size) return RIF.N;
+  const b = trovaBlocco(new Set(filtri.keys()));
+  if (!b) return null;
+  const idx = [...filtri.keys()].map((k) => [b.vars.indexOf(k), filtri.get(k)]);
+  let s = 0;
+  for (const c of b.celle) {
+    let ok = true;
+    for (const [i, t] of idx) if (!t.has(c.k[i])) { ok = false; break; }
+    if (ok) s += c.n;
+  }
+  return s;
+}
+
+/* ---------- query ------------------------------------------------------ */
+const esc = (s) => String(s).replace(/'/g, "''");
+function filtriSenza(escludi) {
+  const m = new Map();
+  for (const [a, s] of attivi) if (s.size && a !== escludi) m.set(a, s);
+  return m;
+}
+function predicato(escludi) {
+  const p = [];
+  for (const [a, s] of filtriSenza(escludi))
+    p.push(`CAST(${a} AS VARCHAR) IN (${[...s].map((v) => `'${esc(v)}'`).join(", ")})`);
+  return p.length ? p.join(" AND ") : null;
+}
+function clausola(escludi) {
+  const p = predicato(escludi);
+  return p ? "WHERE " + p : "";
+}
+async function marginali() {
+  const sql = manifest.attributi
+    .map((a) => `SELECT '${a.nome}' AS attr, CAST(${a.nome} AS VARCHAR) AS mod,
+                        count(*) AS n
+                 FROM 'pop.parquet' ${clausola(a.nome)} GROUP BY 2`)
+    .join("\nUNION ALL\n");
+  const t0 = performance.now();
+  const [res, resN] = await Promise.all([
+    conn.query(sql),
+    conn.query(`SELECT count(*) AS n FROM 'pop.parquet' ${clausola(null)}`)]);
+  const ms = performance.now() - t0;
+  const per = new Map();
+  for (const r of res) {
+    const a = r.attr, m = r.mod === null ? "(mancante)" : String(r.mod);
+    if (!per.has(a)) per.set(a, new Map());
+    per.get(a).set(m, Number(r.n));
+  }
+  return { per, n: Number(resN.get(0).n), ms };
+}
+
+/* ---------- proiezione: Web Mercator ----------------------------------- */
+/* mondo in [0,1]; necessario per allineare le tiles */
+const MX = (lon) => (lon + 180) / 360;
+const MY = (lat) => {
+  const s = Math.sin(lat * Math.PI / 180);
+  return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI);
+};
+
+function jit(id, k) {
+  const x = Math.sin(id * (k ? 78.233 : 12.9898) + k * 7.13) * 43758.5453;
+  return (x - Math.floor(x) - 0.5) * 1.2e-4;
+}
+
+async function prepareGeo() {
+  const n = Number($("risoluzione").value);
+  if (geo && geo.n === n) return geo;
+  const r = await conn.query(
+    `SELECT min(lon) x0, max(lon) x1, min(lat) y0, max(lat) y1
+     FROM 'pop.parquet'`);
+  const g = r.get(0);
+  geo = { x0: Number(g.x0), x1: Number(g.x1),
+          y0: Number(g.y0), y1: Number(g.y1), n };
+  geo.passo = (geo.x1 - geo.x0) / n;
+  geo.wx0 = MX(geo.x0); geo.wx1 = MX(geo.x1);
+  geo.wy0 = MY(geo.y1); geo.wy1 = MY(geo.y0);   // y cresce verso sud
+  return geo;
+}
+function adatta() {
+  const c = $("tela"), w = c.clientWidth, h = c.clientHeight;
+  const s = Math.min((w - 16) / (geo.wx1 - geo.wx0),
+                     (h - 16) / (geo.wy1 - geo.wy0));
+  vista = { cx: (geo.wx0 + geo.wx1) / 2, cy: (geo.wy0 + geo.wy1) / 2,
+            scala: s, min: s };
+}
+const SX = (lon, w) => (MX(lon) - vista.cx) * vista.scala + w / 2;
+const SY = (lat, h) => (MY(lat) - vista.cy) * vista.scala + h / 2;
+
+/* ---------- tiles ------------------------------------------------------ */
+const cacheTile = new Map();
+function urlTile(z, i, j) {
+  const f = $("fondo").value;
+  if (f === "osm") return `https://tile.openstreetmap.org/${z}/${i}/${j}.png`;
+  const s = "abcd"[(i + j) % 4];
+  return `https://${s}.basemaps.cartocdn.com/light_all/${z}/${i}/${j}.png`;
+}
+function tile(z, i, j) {
+  const k = `${$("fondo").value}/${z}/${i}/${j}`;
+  let img = cacheTile.get(k);
+  if (!img) {
+    img = new Image();
+    img.onload = () => chiediRidisegno();
+    img.onerror = () => { img.rotto = true; };
+    img.src = urlTile(z, i, j);
+    cacheTile.set(k, img);
+  }
+  return img.complete && !img.rotto && img.naturalWidth ? img : null;
+}
+function disegnaFondo(g, w, h) {
+  if (!$("fondo").value) return;
+  const z = Math.max(1, Math.min(19, Math.round(Math.log2(vista.scala / 256))));
+  const n = 2 ** z, s = vista.scala / n;
+  const x0 = vista.cx - w / 2 / vista.scala, x1 = vista.cx + w / 2 / vista.scala;
+  const y0 = vista.cy - h / 2 / vista.scala, y1 = vista.cy + h / 2 / vista.scala;
+  for (let i = Math.floor(x0 * n); i <= Math.ceil(x1 * n); i++)
+    for (let j = Math.floor(y0 * n); j <= Math.ceil(y1 * n); j++) {
+      if (i < 0 || j < 0 || i >= n || j >= n) continue;
+      const im = tile(z, i, j);
+      if (!im) continue;
+      g.drawImage(im, (i / n - vista.cx) * vista.scala + w / 2,
+                  (j / n - vista.cy) * vista.scala + h / 2, s + 1, s + 1);
+    }
+  g.fillStyle = "rgba(251,250,247,.42)";   // velo: i dati devono stare sopra
+  g.fillRect(0, 0, w, h);
+}
+
+/* ---------- dati mappa ------------------------------------------------- */
+async function datiMappa() {
+  await prepareGeo();
+  if (!vista) adatta();
+  const pr = predicato(null);
+  if (modo === "punti") {
+    if (!baseXY) {
+      const b = await conn.query(
+        `SELECT id, lon, lat FROM 'pop.parquet'
+         WHERE lon IS NOT NULL ORDER BY random() LIMIT 40000`);
+      baseXY = [];
+      for (const r of b) baseXY.push([Number(r.id), Number(r.lon), Number(r.lat)]);
+    }
+    const cap = Number($("capPunti").value);
+    const q = await conn.query(
+      `SELECT id, lon, lat FROM 'pop.parquet'
+       WHERE lon IS NOT NULL${pr ? " AND " + pr : ""}
+       ORDER BY random() LIMIT ${cap}`);
+    const pt = [];
+    for (const r of q) pt.push([Number(r.id), Number(r.lon), Number(r.lat)]);
+    return { tipo: "punti", pt, cap };
+  }
+  const q = await conn.query(
+    `SELECT floor((lon - ${geo.x0}) / ${geo.passo}) gx,
+            floor((lat - ${geo.y0}) / ${geo.passo}) gy,
+            count(*) tot${pr ? `, count(*) FILTER (WHERE ${pr}) sel` : ""}
+     FROM 'pop.parquet' WHERE lon IS NOT NULL GROUP BY 1, 2`);
+  const celle = [];
+  for (const r of q) {
+    const tot = Number(r.tot);
+    celle.push({ gx: Number(r.gx), gy: Number(r.gy), tot,
+                 sel: pr ? Number(r.sel) : tot });
+  }
+  return { tipo: "griglia", celle };
+}
+
+/* ---------- disegno ---------------------------------------------------- */
+let pendente = false;
+function chiediRidisegno() {
+  if (pendente) return;
+  pendente = true;
+  requestAnimationFrame(() => { pendente = false; if (ultimoDati) rendi(); });
+}
+
+function rendi() {
+  const d = ultimoDati, c = $("tela"), dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== w * dpr || c.height !== h * dpr) {
+    c.width = w * dpr; c.height = h * dpr;
+  }
+  const g = c.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  disegnaFondo(g, w, h);
+
+  if (d.tipo === "punti") {
+    g.fillStyle = "rgba(120,114,102,.55)";
+    for (const [id, x, y] of baseXY || [])
+      g.fillRect(SX(x + jit(id, 0), w) - .5, SY(y + jit(id, 1), h) - .5, 1, 1);
+    hit = [];
+    g.fillStyle = "rgba(124,74,45,.85)";
+    for (const [id, x, y] of d.pt) {
+      const sx = SX(x + jit(id, 0), w), sy = SY(y + jit(id, 1), h);
+      if (sx < -4 || sy < -4 || sx > w + 4 || sy > h + 4) continue;
+      g.fillRect(sx - .9, sy - .9, 1.8, 1.8);
+      hit.push(sx, sy, id);
+    }
+    $("mappaNota").textContent =
+      `${num(d.pt.length)} punti` +
+      (d.pt.length >= d.cap ? ` (tetto ${num(d.cap)})` : "") +
+      " · grigio: la citta' intera · clicca un punto";
+    $("mappaScala").innerHTML = "";
+  } else {
+    hit = null;
+    const SOGLIA = 25;
+    const vmax = Math.max(0.02, ...d.celle.filter((k) => k.tot >= SOGLIA)
+      .map((k) => k.sel / k.tot));
+    for (const k of d.celle) {
+      const lon0 = geo.x0 + k.gx * geo.passo, lat0 = geo.y0 + k.gy * geo.passo;
+      const x = SX(lon0, w), y = SY(lat0 + geo.passo, h);
+      const x2 = SX(lon0 + geo.passo, w), y2 = SY(lat0, h);
+      if (x2 < 0 || y2 < 0 || x > w || y > h) continue;
+      g.fillStyle = k.tot < SOGLIA ? "rgba(160,155,145,.18)"
+        : `rgba(124,74,45,${Math.min(1, k.sel / k.tot / vmax * .9).toFixed(3)})`;
+      g.fillRect(x, y, Math.max(1, x2 - x + .5), Math.max(1, y2 - y + .5));
+    }
+    $("mappaNota").textContent =
+      `celle di ~${Math.round(geo.passo * 111320)} m · quota max ${pct(vmax)} · ` +
+      `citta' ${pct(ultimaQuota)} · sotto ${SOGLIA} abitanti in grigio`;
+    $("mappaScala").innerHTML = "0 " + [0, .25, .5, .75, 1].map((f) =>
+      `<span style="background:rgba(124,74,45,${(f * .9).toFixed(2)})"></span>`)
+      .join("") + " " + pct(vmax);
+  }
+
+  if ($("fondo").value) {
+    g.font = "10px ui-sans-serif, sans-serif";
+    g.fillStyle = "rgba(27,26,23,.6)";
+    g.fillText($("fondo").value === "osm" ? "© OpenStreetMap contributors"
+      : "© OpenStreetMap contributors, © CARTO", 6, h - 6);
+  }
+}
+
+async function aggiornaMappa(quotaGlobale) {
+  if (!mappaOn) return;
+  ultimaQuota = quotaGlobale;
+  $("mappaNota").textContent = "calcolo…";
+  try { ultimoDati = await datiMappa(); rendi(); }
+  catch (e) { $("mappaNota").textContent = "errore: " + e; }
+}
+
+/* ---------- navigazione ------------------------------------------------ */
+const tela = $("tela");
+tela.addEventListener("wheel", (e) => {
+  if (!vista) return;
+  e.preventDefault();
+  const r = tela.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const wx = vista.cx + (mx - r.width / 2) / vista.scala;
+  const wy = vista.cy + (my - r.height / 2) / vista.scala;
+  const f = Math.exp(-e.deltaY * 0.0018);
+  vista.scala = Math.max(vista.min * .8, Math.min(vista.scala * f, vista.min * 3000));
+  vista.cx = wx - (mx - r.width / 2) / vista.scala;
+  vista.cy = wy - (my - r.height / 2) / vista.scala;
+  chiediRidisegno();
+}, { passive: false });
+
+let trascino = null;
+tela.addEventListener("pointerdown", (e) => {
+  if (!vista) return;
+  trascino = { x: e.clientX, y: e.clientY, cx: vista.cx, cy: vista.cy, mosso: 0 };
+  tela.setPointerCapture(e.pointerId);
+  tela.classList.add("trascino");
+});
+tela.addEventListener("pointermove", (e) => {
+  if (!trascino) return;
+  const dx = e.clientX - trascino.x, dy = e.clientY - trascino.y;
+  trascino.mosso = Math.max(trascino.mosso, Math.abs(dx) + Math.abs(dy));
+  vista.cx = trascino.cx - dx / vista.scala;
+  vista.cy = trascino.cy - dy / vista.scala;
+  chiediRidisegno();
+});
+tela.addEventListener("pointerup", (e) => {
+  const fermo = trascino && trascino.mosso < 4;
+  trascino = null;
+  tela.classList.remove("trascino");
+  if (!fermo || !hit) return;
+  const r = tela.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  let best = -1, bd = 64;
+  for (let i = 0; i < hit.length; i += 3) {
+    const dx = hit[i] - mx, dy = hit[i + 1] - my, d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = hit[i + 2]; }
+  }
+  if (best >= 0) apriScheda(best);
+});
+$("btn-adatta").addEventListener("click", () => {
+  if (geo) { adatta(); chiediRidisegno(); }
+});
+
+/* ---------- scheda individuo ------------------------------------------- */
+const CLASSE = {
+  zona: "V", quartiere: "V", sesso: "V", eta: "V", stato_civile: "V",
+  cittadinanza: "V", istruzione: "V", condizione: "V", background: "V",
+  origine_genitori: "V", paese: "C", area: "C",
+  sezione: "A", eta_anni: "A", via: "A", civico: "A", lon: "A", lat: "A",
+  indirizzo_fonte: "A", quinq: "A", id: "A",
+};
+const SEGNO = { V: "■", A: "◧", C: "□", D: "▨" };
+const NOME_CLASSE = { V: "vincolato dal censimento", A: "allocato",
+  C: "condizionato", D: "donato dall'indagine AVQ" };
+const GRUPPI = [
+  ["Anello 1 — vincolato", ["sesso", "eta", "eta_anni", "stato_civile",
+    "cittadinanza", "istruzione", "condizione", "background", "origine_genitori"]],
+  ["Anello 2 — origine", ["paese", "area"]],
+  ["Anello 3 — collocazione", ["zona", "quartiere", "sezione", "via",
+    "civico", "indirizzo_fonte"]],
+];
+function etichettaMod(attr, v) {
+  const a = manifest.attributi.find((x) => x.nome === attr);
+  const m = a && a.modalita.find((x) => x.v === String(v));
+  return m ? m.etichetta : v;
+}
+async function apriScheda(id) {
+  const s = $("scheda");
+  s.hidden = false;
+  s.innerHTML = "caricamento…";
+  let row;
+  try {
+    const r = await conn.query(`SELECT * FROM 'pop.parquet' WHERE id = ${id}`);
+    if (!r.numRows) { s.innerHTML = "individuo non trovato"; return; }
+    row = r.get(0);
+  } catch (e) { s.innerHTML = "errore: " + e; return; }
+  const val = (k) => {
+    const v = row[k];
+    return v === null || v === undefined || v === "" ? null : String(v);
+  };
+  let html = `<span class="chiudi" data-chiudi>×</span>` +
+    `<div class="avvertenza">INDIVIDUO SINTETICO — NON ESISTE</div>` +
+    `<div style="font:600 13px ui-monospace,monospace">` +
+    `${COMUNE}-${String(id).padStart(7, "0")}</div>`;
+  for (const [tit, campi] of GRUPPI) {
+    const righe = campi.filter((k) => val(k) !== null).map((k) => {
+      const c = CLASSE[k] || "D";
+      return `<div class="cmp"><span class="cls" title="${NOME_CLASSE[c]}">` +
+        `${SEGNO[c]}</span><em>${k}</em><b>${etichettaMod(k, val(k))}</b></div>`;
+    });
+    if (righe.length) html += `<h3>${tit}</h3>` + righe.join("");
+  }
+  const avq = Object.keys(row).filter((k) => k.endsWith("_num"))
+    .filter((k) => row[k] !== null && !Number.isNaN(Number(row[k])));
+  if (avq.length) {
+    html += `<h3>AVQ — donato (${avq.length} su 21)</h3>` + avq.map((k) => {
+      const v = Number(row[k]);
+      return `<div class="cmp"><span class="cls" title="${NOME_CLASSE.D}">` +
+        `${SEGNO.D}</span><em>${k.replace("_num", "")}</em>` +
+        `<b>${Number.isInteger(v) ? v : v.toFixed(1)}</b></div>`;
+    }).join("");
+  }
+  html += `<div class="persona">${persona(row, val)}</div>`;
+  s.innerHTML = html;
+}
+function persona(row, val) {
+  const p = [];
+  const g = val("sesso") === "F" ? "Donna" : "Uomo";
+  p.push(`${g}${val("eta_anni") ? ` di ${val("eta_anni")} anni` : ""}` +
+    (val("stato_civile")
+      ? `, ${etichettaMod("stato_civile", val("stato_civile")).toLowerCase()}` : "") + ".");
+  if (val("istruzione"))
+    p.push(`${etichettaMod("istruzione", val("istruzione"))}` +
+      (val("condizione")
+        ? `, ${etichettaMod("condizione", val("condizione")).toLowerCase()}` : "") + ".");
+  if (val("paese") && val("paese") !== "Italia")
+    p.push(`Cittadinanza ${val("paese")}.`);
+  const dove = [val("via"), val("civico")].filter(Boolean).join(" ");
+  if (dove || val("quartiere"))
+    p.push(`Abita${dove ? ` in ${dove}` : ""}` +
+      (val("quartiere") ? `, ${val("quartiere")}` : "") + ".");
+  const f = row["PUNTIFI10_num"];
+  if (f !== null && f !== undefined && !Number.isNaN(Number(f)))
+    p.push(`Valuta ${Number(f)} su 10 la fiducia nel Comune.`);
+  return "Come la vedrebbe un agente del tier 2: " + p.join(" ");
+}
+document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-chiudi]")) $("scheda").hidden = true;
+});
+
+/* ---------- resa marginali --------------------------------------------- */
+function datiPannello(a, per) {
+  const conta = per.get(a.nome) || new Map();
+  const tot = manifest.comune.individui;
+  let nA = 0;
+  for (const c of conta.values()) nA += c;
+  const rif = marginaleReale(a.nome, filtriSenza(a.nome));
+  let nR = 0;
+  if (rif) for (const v of rif.conta.values()) nR += v;
+  let mods = a.modalita;
+  if (a.mostra_prime) mods = mods.slice(0, a.mostra_prime);
+  const dati = mods.map((m) => {
+    const q = nA ? (conta.get(m.v) || 0) / nA : 0;
+    const r = m.n / tot;
+    const cr = rif ? (rif.conta.get(m.v) || 0) : null;
+    return { v: m.v, et: m.etichetta, n: conta.get(m.v) || 0, q, r, d: q - r,
+             nrif: cr, rif: cr === null || !nR ? null : cr / nR,
+             se: nA ? Math.sqrt(Math.max(q * (1 - q), 1e-9) / nA) : 0 };
+  });
+  dati.nA = nA;
+  dati.rifBlocco = rif ? rif.blocco : null;
+  const conRif = dati.filter((d) => d.rif !== null);
+  dati.scartoMax = conRif.length
+    ? Math.max(...conRif.map((d) => Math.abs(d.q - d.rif))) : null;
+  return dati;
+}
+function pannello(a, dati) {
+  const el = document.createElement("section");
+  el.className = "pannello" + (dati.rifBlocco ? "" : " senza-rif");
+  const nascoste = a.mostra_prime ? a.modalita.length - a.mostra_prime : 0;
+  const senzaFiltro = dati.nA === manifest.comune.individui;
+  const scalaQ = Math.max(0.05, ...dati.map((d) => Math.max(d.q, d.r, d.rif ?? 0)));
+  const scalaD = Math.max(0.01, ...dati.map((d) => Math.abs(d.d))) * 1.15;
+  const righe = dati.map((d) => {
+    const sel = attivi.get(a.nome)?.has(d.v);
+    let t;
+    if (!delta) {
+      t = `<i style="width:${(d.q / scalaQ * 100).toFixed(2)}%"></i>` +
+          `<b style="left:${(d.r / scalaQ * 100).toFixed(2)}%"></b>` +
+          (d.rif === null ? "" :
+            `<span class="rif" style="left:${(d.rif / scalaQ * 100).toFixed(2)}%"></span>`);
+    } else {
+      const c = 50, k = 50 / scalaD;
+      const w = Math.abs(d.d) * k, x = d.d >= 0 ? c : c - w;
+      const b = 1.96 * d.se * k;
+      t = `<span class="banda" style="left:${(c - b).toFixed(2)}%;width:${(2 * b).toFixed(2)}%"></span>` +
+          `<span class="zero" style="left:${c}%"></span>` +
+          `<i style="left:${x.toFixed(2)}%;width:${w.toFixed(2)}%"></i>` +
+          (d.rif === null ? "" :
+            `<span class="rif" style="left:${(c + (d.rif - d.r) * k).toFixed(2)}%"></span>`);
+    }
+    const val = delta ? (d.d >= 0 ? "+" : "−") + pct2(Math.abs(d.d)) : pct(d.q);
+    return `<div class="riga${sel ? " attiva" : ""}" data-attr="${a.nome}"
+                 data-mod="${d.v.replace(/"/g, "&quot;")}"
+                 title="${num(d.n)} sintetici${d.nrif === null ? "" :
+                   " · " + num(d.nrif) + " censuari"}">
+              <span class="et">${d.et}</span>
+              <span class="traccia${senzaFiltro && !delta ? " neutra" : ""}">${t}</span>
+              <span class="val">${val}</span></div>`;
+  }).join("");
+  const nota = [];
+  if (dati.rifBlocco) {
+    nota.push(`censimento da ${dati.rifBlocco.vars.join("×")}`);
+    if (dati.scartoMax !== null) nota.push(`scarto max ${pct2(dati.scartoMax)}%`);
+  } else nota.push("nessun dato censuario per questo incrocio");
+  if (attivi.has(a.nome)) nota.push("filtro proprio escluso");
+  if (nascoste) nota.push(`${nascoste} non mostrate`);
+  el.innerHTML = `<h2>${a.etichetta}</h2>
+     <div class="nota"><span>${nota.join(" · ")}</span>
+       <a data-svg="${a.nome}">SVG</a></div>${righe}`;
+  return el;
+}
+function disegna(res) {
+  const g = $("griglia");
+  g.innerHTML = "";
+  ultimo = new Map();
+  for (const a of manifest.attributi) {
+    const d = datiPannello(a, res.per);
+    ultimo.set(a.nome, d);
+    g.appendChild(pannello(a, d));
+  }
+  $("n-sel").textContent = num(res.n);
+  $("n-pct").textContent = pct(res.n / manifest.comune.individui);
+  const reale = totaleReale(filtriSenza(null));
+  if (reale === null) $("box-reale").hidden = true;
+  else {
+    $("box-reale").hidden = false;
+    $("n-rea").textContent = num(reale);
+    const s = (res.n - reale) / reale;
+    $("n-sca").textContent = `(${s >= 0 ? "+" : "−"}${pct2(Math.abs(s))}%)`;
+  }
+  $("sottotitolo").textContent =
+    `${num(manifest.comune.individui)} individui sintetici · ` +
+    `marginali in ${res.ms.toFixed(0)} ms`;
+  pillole();
+}
+function pillole() {
+  const c = $("pillole");
+  c.innerHTML = "";
+  for (const [attr, set] of attivi) {
+    if (!set.size) continue;
+    const a = manifest.attributi.find((x) => x.nome === attr);
+    for (const v of set) {
+      const m = a.modalita.find((x) => x.v === v);
+      const s = document.createElement("span");
+      s.className = "pillola";
+      s.innerHTML = `${a.etichetta}: ${m ? m.etichetta : v}` +
+        ` <button data-x-attr="${attr}" data-x-mod="${v}">×</button>`;
+      c.appendChild(s);
+    }
+  }
+}
+
+/* ---------- export ----------------------------------------------------- */
+function comeCSV() {
+  const r = [["attributo", "modalita", "n_sintetico", "n_censuario",
+              "quota", "citta", "censimento", "scarto_modello"]];
+  for (const a of manifest.attributi)
+    for (const d of ultimo.get(a.nome) || [])
+      r.push([a.etichetta, d.et, d.n, d.nrif === null ? "" : Math.round(d.nrif),
+              pct2(d.q), pct2(d.r), d.rif === null ? "" : pct2(d.rif),
+              d.rif === null ? "" : pct2(d.q - d.rif)]);
+  return r.map((x) => x.map((c) =>
+    /[";\n]/.test(String(c)) ? `"${c}"` : c).join(";")).join("\n");
+}
+function comeLaTeX() {
+  const filtro = [...attivi].flatMap(([k, s]) => [...s].map((v) => `${k}=${v}`))
+    .join(", ") || "nessuno";
+  let t = `% Animarium — ${manifest.comune.nome}\n% filtro: ${filtro}\n` +
+    `% n sintetici = ${$("n-sel").textContent}` +
+    ($("box-reale").hidden ? "" : `, censuari = ${$("n-rea").textContent}`) + "\n" +
+    `\\begin{tabular}{llrrrr}\n\\toprule\nAttributo & Modalità & $n$ & Quota & ` +
+    `Città & Censimento \\\\\n\\midrule\n`;
+  let cur = null;
+  for (const a of manifest.attributi) {
+    for (const d of ultimo.get(a.nome) || []) {
+      const et = cur === a.etichetta ? "" : a.etichetta;
+      cur = a.etichetta;
+      t += `${et} & ${d.et} & ${d.n} & ${pct2(d.q)} & ${pct2(d.r)} & ` +
+           `${d.rif === null ? "---" : pct2(d.rif)} \\\\\n`;
+    }
+    t += "\\addlinespace\n";
+  }
+  return t + "\\bottomrule\n\\end{tabular}\n";
+}
+function comeSVG(nome) {
+  const a = manifest.attributi.find((x) => x.nome === nome);
+  const d = ultimo.get(nome) || [];
+  const L = 178, W = 470, H = 21, top = 36, bot = 34;
+  const alt = top + d.length * H + bot;
+  const scala = Math.max(0.05, ...d.map((x) => Math.max(x.q, x.r, x.rif ?? 0)));
+  const px = (v) => L + (v / scala) * (W - L - 48);
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${alt}" ` +
+    `viewBox="0 0 ${W} ${alt}" font-family="Georgia, serif">` +
+    `<rect width="${W}" height="${alt}" fill="#fbfaf7"/>` +
+    `<text x="0" y="16" font-size="12.5" font-weight="600">${a.etichetta}</text>`;
+  d.forEach((x, i) => {
+    const y = top + i * H, xr = px(x.r).toFixed(1);
+    s += `<text x="${L - 8}" y="${y + 13}" font-size="11" text-anchor="end">${x.et}</text>` +
+      `<rect x="${L}" y="${y + 3}" width="${(px(x.q) - L).toFixed(1)}" height="12" fill="#7c4a2d"/>` +
+      `<line x1="${xr}" x2="${xr}" y1="${y}" y2="${y + 18}" stroke="#1b1a17" stroke-width="2"/>` +
+      `<polygon points="${xr - 4},${y - 6} ${+xr + 4},${y - 6} ${xr},${y}" fill="#1b1a17"/>`;
+    if (x.rif !== null) {
+      const xc = px(x.rif).toFixed(1);
+      s += `<polygon points="${xc},${y + 4} ${+xc + 5},${y + 9} ${xc},${y + 14} ${+xc - 5},${y + 9}" fill="#1b1a17"/>`;
+    }
+    s += `<text x="${W - 44}" y="${y + 13}" font-size="10.5" font-family="monospace">${pct(x.q)}</text>`;
+  });
+  const yb = top + d.length * H + 5;
+  s += `<line x1="${L}" x2="${px(scala)}" y1="${yb}" y2="${yb}" stroke="#b9b3a6"/>` +
+    `<text x="${L}" y="${yb + 13}" font-size="9.5" fill="#6b6862">0</text>` +
+    `<text x="${px(scala)}" y="${yb + 13}" font-size="9.5" fill="#6b6862" text-anchor="end">${pct(scala)}</text>` +
+    `<text x="0" y="${alt - 3}" font-size="9" fill="#6b6862">` +
+    `barra: sottopopolazione · tacca: citta' intera · rombo: censimento</text></svg>`;
+  return s;
+}
+function mostra(t, x) {
+  $("finestra-tit").textContent = t;
+  $("finestra-txt").value = x;
+  $("finestra").showModal();
+}
+
+/* ---------- eventi ----------------------------------------------------- */
+async function aggiorna() {
+  scriviURL();
+  const res = await marginali();
+  disegna(res);
+  await aggiornaMappa(res.n / manifest.comune.individui);
+}
+document.addEventListener("click", async (e) => {
+  const x = e.target.closest("[data-x-attr]");
+  if (x) {
+    const s = attivi.get(x.dataset.xAttr);
+    if (s) { s.delete(x.dataset.xMod); if (!s.size) attivi.delete(x.dataset.xAttr); }
+    return aggiorna();
+  }
+  const svg = e.target.closest("[data-svg]");
+  if (svg) return mostra("SVG — " + svg.dataset.svg, comeSVG(svg.dataset.svg));
+  const r = e.target.closest(".riga");
+  if (!r) return;
+  const { attr, mod } = r.dataset;
+  if (!attivi.has(attr)) attivi.set(attr, new Set());
+  const s = attivi.get(attr);
+  s.has(mod) ? s.delete(mod) : s.add(mod);
+  if (!s.size) attivi.delete(attr);
+  aggiorna();
+});
+$("btn-mappa").addEventListener("click", async (e) => {
+  mappaOn = !mappaOn;
+  e.currentTarget.setAttribute("aria-pressed", String(mappaOn));
+  $("zonaMappa").hidden = !mappaOn;
+  scriviURL();
+  if (mappaOn) await aggiornaMappa(ultimaQuota);
+});
+$("modo").addEventListener("change", (e) => {
+  modo = e.target.value;
+  $("capPunti").hidden = modo !== "punti";
+  $("risoluzione").hidden = modo !== "quota";
+  $("scheda").hidden = true;
+  scriviURL();
+  aggiornaMappa(ultimaQuota);
+});
+$("fondo").addEventListener("change", () => chiediRidisegno());
+$("risoluzione").addEventListener("change", () => { geo = null; aggiornaMappa(ultimaQuota); });
+$("capPunti").addEventListener("change", () => aggiornaMappa(ultimaQuota));
+addEventListener("resize", () => { if (mappaOn && vista) chiediRidisegno(); });
+$("btn-delta").addEventListener("click", (e) => {
+  delta = !delta;
+  e.currentTarget.setAttribute("aria-pressed", String(delta));
+  aggiorna();
+});
+$("btn-reset").addEventListener("click", () => { attivi = new Map(); aggiorna(); });
+$("btn-csv").addEventListener("click", () => mostra("CSV", comeCSV()));
+$("btn-tex").addEventListener("click", () => mostra("LaTeX", comeLaTeX()));
+$("btn-copia").addEventListener("click", () =>
+  navigator.clipboard.writeText($("finestra-txt").value));
+$("citta").addEventListener("change", (e) => {
+  location.search = "?comune=" + e.target.value;
+});
+
+/* ---------- avvio ------------------------------------------------------ */
+(async function () {
+  try {
+    const r = await fetch("../bundle/comuni.json");
+    if (!r.ok) throw 0;
+    const ix = await r.json();
+    $("citta").innerHTML = ix.comuni.map((c) =>
+      `<option value="${c.codice}"${c.codice === COMUNE ? " selected" : ""}>` +
+      `${c.nome} — ${num(c.individui)}</option>`).join("");
+  } catch (e) {
+    $("citta").innerHTML = `<option>${COMUNE}</option>`;
+    avviso("", "<b>Indice delle citta' assente</b>. " +
+      "<code>python build/build_indice.py</code>");
+  }
+  try {
+    const r = await fetch(BASE + "manifest.json");
+    if (!r.ok) throw new Error(r.status + " su manifest.json");
+    manifest = await r.json();
+  } catch (e) {
+    avviso("errore", `<b>Manifest non trovato.</b> ${e}<br>` +
+      `<code>python build/manifest_min.py ${COMUNE}</code>`);
+    return;
+  }
+  try {
+    const r = await fetch(BASE + "riferimenti.json");
+    if (r.ok) RIF = await r.json();
+  } catch (e) { /* si prosegue senza */ }
+
+  leggiURL();
+  $("btn-delta").setAttribute("aria-pressed", String(delta));
+  $("btn-mappa").setAttribute("aria-pressed", String(mappaOn));
+  $("zonaMappa").hidden = !mappaOn;
+  $("modo").value = modo;
+  $("capPunti").hidden = modo !== "punti";
+  $("risoluzione").hidden = modo !== "quota";
+
+  try {
+    const duckdb = await import(DUCKDB);
+    const b = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
+    const u = URL.createObjectURL(new Blob(
+      [`importScripts("${b.mainWorker}");`], { type: "text/javascript" }));
+    const w = new Worker(u);
+    const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), w);
+    await db.instantiate(b.mainModule, b.pthreadWorker);
+    URL.revokeObjectURL(u);
+    conn = await db.connect();
+    await db.registerFileURL("pop.parquet",
+      new URL(BASE + manifest.comune.parquet, location.href).href,
+      duckdb.DuckDBDataProtocol.HTTP, false);
+  } catch (e) {
+    avviso("errore", `<b>DuckDB non si e' avviato.</b> ${e}`);
+    return;
+  }
+  $("stato").hidden = false;
+  $("legenda").hidden = false;
+  await aggiorna();
+})();
+</script>
+</html>
