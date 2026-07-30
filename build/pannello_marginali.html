@@ -45,6 +45,9 @@
            border: 1px solid #cfcabf; border-radius: 3px; }
   header select { font-size: 14px; padding: .3rem .5rem; }
 
+  .avviso-globale { padding: .6rem 1.5rem; font-size: 12.5px; line-height: 1.45;
+                    background: #f3ece2; border-bottom: 1px solid #d8c9b4; }
+
   .barra-stato { display: flex; flex-wrap: wrap; gap: .5rem .9rem;
                  align-items: center; padding: .7rem 1.5rem;
                  border-bottom: 1px solid var(--linea); font-size: 13px; }
@@ -157,6 +160,17 @@
   <select id="citta"></select>
   <span class="sub" id="sottotitolo">caricamento…</span>
 </header>
+<div class="avviso-globale">
+  <b>Popolazione sintetica.</b> Nessuno degli individui mostrati esiste, e
+  nessuno corrisponde a una persona reale. Gli indirizzi sono civici reali
+  dell'archivio ANNCSU, ma <b>l'assegnazione di un individuo a un civico non
+  porta informazione</b>: il modello colloca le persone dentro la sezione di
+  censimento in modo arbitrario. La risoluzione dei dati si ferma alla
+  sezione; la mappa a punti mostra l'edificio solo per leggibilità.
+  Le statistiche aggregate riproducono il censimento entro il rumore di
+  campionamento, ma soltanto sugli incroci che il censimento vincola: dove
+  non lo fa, il pannello lo dichiara.
+</div>
 
 <div class="barra-stato" id="stato" hidden>
   <span><span class="cifra" id="n-sel">—</span> sintetici</span>
@@ -230,7 +244,14 @@
 const DUCKDB = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm";
 const P = new URLSearchParams(location.search);
 const COMUNE = P.get("comune") || "036023";
-const BASE = `../bundle/comuni/${COMUNE}/`;
+let RADICE = "../bundle", BASE = "";
+async function trovaBundle() {
+  for (const r of ["bundle", "../bundle"]) {
+    try { if ((await fetch(`${r}/comuni.json`, { method: "HEAD" })).ok) return r; }
+    catch (e) {}
+  }
+  return "../bundle";
+}
 
 const $ = (id) => document.getElementById(id);
 const pct = (x) => (x * 100).toFixed(1).replace(".", ",") + "%";
@@ -903,8 +924,10 @@ $("citta").addEventListener("change", (e) => {
 
 /* ---------- avvio ------------------------------------------------------ */
 (async function () {
+  RADICE = await trovaBundle();
+  BASE = `${RADICE}/comuni/${COMUNE}/`;
   try {
-    const r = await fetch("../bundle/comuni.json");
+    const r = await fetch(`${RADICE}/comuni.json`);
     if (!r.ok) throw 0;
     const ix = await r.json();
     $("citta").innerHTML = ix.comuni.map((c) =>

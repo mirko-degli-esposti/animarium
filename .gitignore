@@ -1,5 +1,6 @@
 # dati generati: ricostruibili con to_parquet.py
 bundle/
+deploy/
 
 # uscite dei diagnostici
 viol_*.csv
@@ -20,3 +21,4 @@ dist/
 # scarti
 *.bak
 *~
+deploy/

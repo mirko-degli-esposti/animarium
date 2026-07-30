@@ -221,12 +221,19 @@ def main():
     print(f"in ascolto su {base}/")
     print()
     pagine = [
+        ("index.html",                    "Animarium — marginali e mappa"),
         ("build/pannello_marginali.html", "Animarium — marginali e mappa"),
+        ("smoke.html",                    "smoke test DuckDB-WASM"),
         ("build/smoke_duckdb.html",       "smoke test DuckDB-WASM"),
     ]
+    visti = set()
     for percorso, che in pagine:
-        segno = " " if os.path.exists(percorso) else "?"
-        print(f"  {segno} {che:<32} {base}/{percorso}")
+        if che in visti or not os.path.exists(percorso):
+            continue
+        visti.add(che)
+        print(f"    {che:<32} {base}/{percorso}")
+    if not visti:
+        print("  ? nessuna pagina trovata: sei nella directory giusta?")
     if not os.path.exists("bundle/comuni.json"):
         print("\n  ? bundle/comuni.json assente: il menu delle citta' "
               "restera' vuoto")

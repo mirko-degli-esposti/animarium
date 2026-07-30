@@ -11,7 +11,11 @@ Non li genera. Pipeline e dati stanno in `~/progetti/gsp/`, documentati in
 `GSP_popolazioni_full_riferimento_v16.md`.
 
 Citta': **Bologna** (390.098), **Brescia** (198.259), **Parma** (198.121),
-**Modena** (184.597). Bundle complessivo: **16,2 MB**.
+**Modena** (184.597). Bundle complessivo: **16,65 MB**.
+
+**Online, in forma provvisoria**: <https://animarium.pages.dev>
+Bundle completo, con avviso esplicito sulla risoluzione dei dati. Decisioni e
+limiti in `note/design_animarium_v07.md`, §15.
 
 ---
 
@@ -34,14 +38,22 @@ done
 python build/build_indice.py
 ```
 
+Ripubblicare:
+
+```bash
+python build/deploy.py
+npx wrangler pages deploy deploy/ --project-name animarium --branch main
+```
+
 ---
 
 ## Struttura
 
 ```
 animarium/
-  build/            Python (diagnostici, export, server) + le pagine HTML
+  build/            Python (bundle, diagnostici, server, deploy) + pagine HTML
   bundle/           generato, escluso da git, ricostruibile in un comando
+  deploy/           generato, escluso da git, cio' che finisce online
   note/             documento di design, versionato
 ```
 
@@ -57,13 +69,14 @@ animarium/
 | F3 | pannello dei marginali | ✔ |
 | F4 | riferimento censuario dal constraint set | ✔ copertura 20% delle coppie |
 | F5 | mappa | ◧ quota, punti, navigazione, base cartografica |
+| — | **pubblicazione** | ✔ provvisoria, in anticipo su F9 |
 | F6 | `donor_id` nel Parquet + pannello AVQ con `n_eff` | ← **prossimo** |
 | F7 | confronto fra citta' | |
 | F8 | pagina Metodo | |
-| F9 | grafica e pubblicazione | |
+| F9 | grafica e pubblicazione definitiva | |
 
 Dettagli, misure, questioni aperte e ritrattazioni:
-`note/design_animarium_v06.md`.
+`note/design_animarium_v07.md`.
 
 ---
 
@@ -92,7 +105,8 @@ invece di nasconderlo.
 - **quota** — frazione del filtro sul totale locale, celle di ~150 m, sotto 25
   abitanti in grigio. E' l'unico modo informativo;
 - **punti** — individui campionati con jitter deterministico, sopra uno strato
-  grigio della citta' intera. **Cliccabili**: si apre la scheda dell'individuo.
+  grigio della citta' intera. **Cliccabili**: si apre la scheda dell'individuo,
+  con il livello di garanzia per ogni attributo.
 
 Zoom con la rotella, trascinamento, `adatta`. Base cartografica opzionale.
 
@@ -133,16 +147,23 @@ python build/build_indice.py
 `bundle/comuni.json` per il menu delle citta'. Da rifare quando se ne aggiunge
 una.
 
+```bash
+python build/deploy.py [--push]
+```
+Assembla `deploy/` — `index.html`, `smoke.html`, `bundle/` — pronta per
+Cloudflare Pages. Con `--push` la spinge su un ramo `gh-pages` usa-e-getta,
+cosi' i Parquet non entrano nella storia di `main`.
+
 ### Diagnostici sulla pipeline
 
 ```bash
-python build/diag_quinq.py 036023 --out residui.csv
+python build/diag_quinq.py 036023 --out out/residui.csv
 ```
 Riaggrega alle sedici classi quinquennali ISTAT e confronta con
 `P{30+k}`/`P{67+k}` per sezione e sesso. Diagnostico del *seam* a nove anni.
 
 ```bash
-python build/diag_istruzione_eta.py 036023 --out viol.csv
+python build/diag_istruzione_eta.py 036023 --out out/viol.csv
 ```
 Coerenza fra eta' esatta e titolo di studio (~2,7% di combinazioni
 impossibili), piu' il controllo delle combinazioni impossibili gia' a livello
@@ -162,7 +183,7 @@ Anatomia del constraint set: blocchi, zeri espliciti, e se le combinazioni
 logicamente impossibili sono vincolate o semplicemente non coperte.
 
 ```bash
-python build/verifica_vincoli.py 036023 --out celle.csv
+python build/verifica_vincoli.py 036023 --out out/celle.csv
 ```
 Verifica cella per cella **contro il pavimento di rumore**: z-score invece di
 errore relativo. `sd(z)` e' anche il fattore di inflazione della varianza
@@ -171,11 +192,11 @@ dovuto all'autocorrelazione della catena.
 ### Misura
 
 ```bash
-python build/serve_range.py
+python build/serve_range.py [--dir deploy]
 ```
 Server statico con supporto Range e conteggio dei byte per intervallo.
 `python -m http.server` **non** supporta Range e falserebbe ogni misura.
-Serve anche lo smoke test: `build/smoke_duckdb.html`.
+Serve anche lo smoke test.
 
 ---
 
@@ -213,15 +234,16 @@ come tali nel documento di design.
 
 1. **`donor_id` nell'export** e pannello AVQ con `n_eff` per universo di
    variabile. E' il pezzo mancante della catena dell'onesta': oggi le AVQ
-   compaiono solo nella scheda individuo.
-2. Definizioni vere di `macroeta` e `istr4` in `assign_avq.py` — senza,
-   `cella_avq` non e' stimabile.
-3. Definizione di MRE in `fit_cs.py`: differisce da quella dello strumento per
-   un fattore `√(2/π)`.
+   compaiono solo nella scheda individuo. E' anche cio' che serve al lavoro su
+   Caffaro.
+2. **`--pubblico` in `to_parquet.py`**: toglie `via` e `civico`. Previsto dal
+   design fin dall'inizio, mai scritto, e necessario prima della pubblicazione
+   per arXiv — dove la configurazione si rovescia: codice pubblico, dati
+   degradati.
+3. Definizioni vere di `macroeta` e `istr4` in `assign_avq.py`; definizione di
+   MRE in `fit_cs.py`, che differisce da quella dello strumento per un fattore
+   `√(2/π)`.
 
 Sul binario della pipeline, separato: le due riparazioni post-hoc (permutazione
 di `istruzione`, 26 esclusioni α=0), i diagnostici su Bologna e Brescia, e il
 blocco `sesso × background × origine_genitori` che mostra |z| fino a 4,0.
-
-Per la pubblicazione: l'unica dipendenza esterna e' la base cartografica, e la
-via d'uscita e' un estratto `.pmtiles` di Protomaps servito dal bundle.
