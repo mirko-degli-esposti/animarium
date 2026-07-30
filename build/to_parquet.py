@@ -111,7 +111,8 @@ def ordina_colonne(cols):
     le AVQ e le pesanti, cosi' non inquinano la lettura dei marginali."""
     a = [c for c in BLOCCO_A if c in cols]
     b = ([c + "_num" for c in AVQ if c + "_num" in cols]
-         + [c for c in AVQ if c in cols])
+         + [c for c in AVQ if c in cols]
+         + (["donor_id"] if "donor_id" in cols else []))
     c = [c for c in BLOCCO_C if c in cols]
     noti = set(a) | set(b) | set(c)
     resto = [x for x in cols if x not in noti]
@@ -175,6 +176,17 @@ def main():
         for c in presenti:
             p[c + "_num"] = pd.to_numeric(p[c], errors="coerce").astype("float32")
         print(f"[info] aggiunte {len(presenti)} colonne AVQ numeriche")
+
+        firma = p[presenti].fillna("~").agg("|".join, axis=1)
+        n_firme = int(pd.factorize(firma)[0].max()) + 1
+        assert n_firme < 32000, f"troppe firme per int16: {n_firme}"
+        p["donor_id"] = pd.factorize(firma)[0].astype("int16")
+        m = p["donor_id"].value_counts().to_numpy(dtype="float64")
+        print(f"[info] donor_id: {p['donor_id'].nunique():,} firme · "
+              f"riuso medio {m.mean():.1f} · "
+              f"n_eff di Kish {m.sum() ** 2 / (m ** 2).sum():,.0f}"
+              .replace(",", "."))
+
         if args.drop_avq_raw:
             p = p.drop(columns=presenti)
             print(f"[info] rimosse {len(presenti)} colonne AVQ grezze")

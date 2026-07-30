@@ -1,31 +1,25 @@
 <!doctype html>
 <html lang="it">
 <meta charset="utf-8">
+<meta name="robots" content="noindex, noarchive">
 <title>Animarium — marginali</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
 <!--
-  Animarium — marginali, mappa navigabile, scheda individuo.   v6
+  Animarium — marginali, mappa, scheda individuo, fiducia istituzionale.  v7
 
-  Novita':
+  Novita': il pannello della fiducia istituzionale, e con esso il pezzo
+  mancante della catena dell'onesta'.
 
-  1. **Web Mercator.** La v5 usava una proiezione equirettangolare, che a
-     scala urbana e' accurata ma NON si allinea alle tiles. Passare a Mercator
-     era necessario per la base cartografica ed e' comunque la scelta giusta.
+  Le 21 AVQ sono **donate**: ogni individuo le riceve in blocco da un
+  rispondente reale, e l'intera popolazione poggia su ~4.200 firme distinte.
+  Con n_eff di Kish fra 1.478 e 2.007 — che NON cresce con la citta' — una
+  banda di confidenza calcolata su n e' troppo stretta di un fattore 10-16.
 
-  2. **Zoom e pan.** Rotella per lo zoom sul cursore, trascinamento per lo
-     spostamento, "adatta" per tornare all'inquadratura piena. Il riconoscimento
-     del clic distingue un clic fermo da un trascinamento entro 4 px, cosi' la
-     scheda dell'individuo non si apre per sbaglio mentre si naviga.
-
-  3. **Base cartografica opzionale.** OSM e CARTO non chiedono chiavi API ma
-     sono servizi esterni: violano la condizione di §7.3 che tiene il progetto
-     pubblicabile senza dipendenze. Per l'uso interno vanno bene; per la rete
-     la strada e' un estratto .pmtiles di Protomaps servito da noi. Il default
-     resta "nessuna", cosi' si vede sempre che i dati stanno in piedi da soli.
-
-  4. **Risoluzione della griglia** regolabile: la quota si ricalcola su celle
-     piu' o meno fini. Richiede una nuova query, che costa quanto il blocco A.
+  Il pannello mostra **entrambe le bande**: quella ingenua sottile e chiara,
+  quella onesta spessa e scura. La differenza fra le due e' l'argomento
+  visivo per il quale n_eff esiste, e vale piu' di qualunque nota a pie' di
+  pagina.
 -->
 
 <style>
@@ -108,6 +102,31 @@
   #scheda .chiudi { position: absolute; top: .45rem; right: .55rem;
             cursor: pointer; color: var(--tenue); font-weight: 700; }
 
+  /* --- fiducia istituzionale --- */
+  #zonaFiducia { padding: 1.2rem 1.5rem 0; }
+  #zonaFiducia h2 { font: 600 13px/1.2 inherit; margin: 0 0 .1rem;
+            text-transform: uppercase; letter-spacing: .05em; }
+  #zonaFiducia .nota { color: var(--tenue); font-size: 11.5px;
+            margin-bottom: .7rem; }
+  .fid { display: grid; grid-template-columns: 12.5rem 1fr 6.5rem;
+         align-items: center; gap: .5rem; padding: .2rem 0; }
+  .fid .et { font-size: 12.5px; }
+  .fid .et small { color: var(--tenue); }
+  .fasce { position: relative; height: 16px; background: #f0ece3;
+           border-radius: 1px; }
+  .fasce .griglia10 { position: absolute; top: 0; bottom: 0; width: 0;
+           border-left: 1px solid #e3ded3; }
+  .fasce .naive { position: absolute; top: 6px; height: 4px;
+           background: #cdbfae; border-radius: 2px; }
+  .fasce .onesta { position: absolute; top: 3px; height: 10px;
+           background: rgba(124,74,45,.30); border-radius: 2px; }
+  .fasce .media { position: absolute; top: 1px; bottom: 1px; width: 0;
+           border-left: 2.5px solid var(--accento); z-index: 3; }
+  .fasce .naz { position: absolute; top: -3px; bottom: -3px; width: 0;
+           border-left: 2px dotted var(--inchiostro); z-index: 4; }
+  .fid .num { font: 12px ui-monospace, monospace; text-align: right;
+              font-variant-numeric: tabular-nums; }
+
   main { padding: 1.2rem 1.5rem 4rem; }
   .griglia { display: grid; gap: 1.7rem 2rem;
              grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
@@ -160,6 +179,7 @@
   <select id="citta"></select>
   <span class="sub" id="sottotitolo">caricamento…</span>
 </header>
+
 <div class="avviso-globale">
   <b>Popolazione sintetica.</b> Nessuno degli individui mostrati esiste, e
   nessuno corrisponde a una persona reale. Gli indirizzi sono civici reali
@@ -179,6 +199,7 @@
   <span><span class="cifra" id="n-pct">—</span> della citta'</span>
   <span id="pillole"></span>
   <span class="attrezzi">
+    <button class="az" id="btn-fiducia" aria-pressed="false">fiducia</button>
     <button class="az" id="btn-mappa" aria-pressed="false">mappa</button>
     <button class="az" id="btn-delta" aria-pressed="false">scarti Δ</button>
     <button class="az" id="btn-csv">CSV</button>
@@ -194,6 +215,12 @@
     <b style="color:var(--inchiostro)">rombo</b> censimento</span>
   <span>scarto dalla tacca = <b style="color:var(--inchiostro)">associazione</b> ·
     scarto dal rombo = <b style="color:var(--inchiostro)">errore del modello</b></span>
+</div>
+
+<div id="zonaFiducia" hidden>
+  <h2>Fiducia istituzionale</h2>
+  <div class="nota" id="fidNota"></div>
+  <div id="fidRighe"></div>
 </div>
 
 <div id="zonaMappa" hidden>
@@ -244,6 +271,7 @@
 const DUCKDB = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm";
 const P = new URLSearchParams(location.search);
 const COMUNE = P.get("comune") || "036023";
+
 let RADICE = "../bundle", BASE = "";
 async function trovaBundle() {
   for (const r of ["bundle", "../bundle"]) {
@@ -257,10 +285,12 @@ const $ = (id) => document.getElementById(id);
 const pct = (x) => (x * 100).toFixed(1).replace(".", ",") + "%";
 const pct2 = (x) => (x * 100).toFixed(2).replace(".", ",");
 const num = (n) => Math.round(n).toLocaleString("it-IT");
+const dec = (x, k = 2) => x.toFixed(k).replace(".", ",");
 
 let manifest, RIF = null, conn, attivi = new Map(), delta = false, ultimo = null;
 let mappaOn = false, modo = "quota", geo = null, baseXY = null, hit = null;
 let vista = null, ultimoDati = null, ultimaQuota = 0;
+let fiduciaOn = false, ordineFid = null, ultimoFid = null;
 
 function avviso(cls, html) {
   const d = document.createElement("div");
@@ -268,6 +298,42 @@ function avviso(cls, html) {
   d.innerHTML = html;
   $("avvisi").appendChild(d);
 }
+
+/* ---------- fiducia istituzionale: costanti --------------------------- */
+/* Corrispondenza dal codebook AVQ. Il tracciato pubblicato salta il 9 e
+   l'11: una delle due e' FORZE_ARMATE, che compare col nome dell'istituzione
+   invece che col progressivo — e per questo NON e' nella popolazione, perche'
+   assign_avq.py seleziona per prefisso PUNTIFI. La batteria e' quindi
+   incompleta di una voce su dodici. */
+const ISTITUZIONI = {
+  PUNTIFI1:  "Parlamento italiano",
+  PUNTIFI2:  "Sistema giudiziario",
+  PUNTIFI3:  "Forze dell'ordine",
+  PUNTIFI4:  "Partiti politici",
+  PUNTIFI5:  "Parlamento europeo",
+  PUNTIFI6:  "Presidente della Repubblica",
+  PUNTIFI7:  "Governo italiano",
+  PUNTIFI8:  "Governo regionale",
+  PUNTIFI10: "Governo comunale",
+  PUNTIFI12: "Vigili del fuoco",
+  PUNTIFI13: "Banche",
+  VOTOUSL:   "Giudizio sull'ASL",
+};
+
+/* FONTE DA CONFERMARE prima di stampare queste tacche in una figura.
+   Medie nazionali AVQ 2024 riportate nel documento di design fin dalla v0.1,
+   senza citazione. Se non si trova la fonte, vanno tolte: una tacca di
+   riferimento sbagliata sposta la lettura di ogni riga. */
+const NAZIONALI = {
+  PUNTIFI3: 6.70, PUNTIFI12: 8.10, PUNTIFI10: 5.13,
+  PUNTIFI8: 4.65, VOTOUSL: 6.34,
+};
+
+/* VOTOUSL non appartiene alla batteria: e' un giudizio su un servizio
+   ricevuto, quindi con filtro per esperienza — la copertura cresce con
+   l'eta' (0,12 a 15-24, 0,30 a 65-74). Chi risponde e' sistematicamente
+   diverso da chi non risponde, e la mancanza NON e' ignorabile. */
+const A_PARTE = new Set(["VOTOUSL"]);
 
 /* ---------- URL -------------------------------------------------------- */
 function leggiURL() {
@@ -278,6 +344,7 @@ function leggiURL() {
   }
   delta = P.get("delta") === "1";
   mappaOn = P.get("mappa") === "1";
+  fiduciaOn = P.get("fiducia") === "1";
   modo = P.get("modo") === "punti" ? "punti" : "quota";
 }
 function scriviURL() {
@@ -285,6 +352,7 @@ function scriviURL() {
   p.set("comune", COMUNE);
   for (const [k, s] of attivi) if (s.size) p.set(k, [...s].join("~"));
   if (delta) p.set("delta", "1");
+  if (fiduciaOn) p.set("fiducia", "1");
   if (mappaOn) { p.set("mappa", "1"); p.set("modo", modo); }
   history.replaceState(null, "", "?" + p.toString());
 }
@@ -361,31 +429,123 @@ async function marginali() {
   return { per, n: Number(resN.get(0).n), ms };
 }
 
+/* ---------- fiducia: query -------------------------------------------- */
+/* Per ogni variabile serve la media, la varianza e n_eff di Kish. Kish
+   richiede la distribuzione dei conteggi per donatore, quindi si aggrega
+   prima per donor_id e poi si somma: n_eff = (Σm)² / Σm².
+   Una sottoquery per variabile, unite in UNION ALL: verboso ma certo. */
+function sqlFiducia(pr) {
+  const dove = pr ? `AND ${pr}` : "";
+  return Object.keys(ISTITUZIONI).map((v) => `
+    SELECT '${v}' AS var, sum(c) AS n, count(*) AS donatori,
+           sum(s) / sum(c) AS media,
+           (sum(q) - sum(s) * sum(s) / sum(c)) / greatest(sum(c) - 1, 1) AS varianza,
+           sum(c) * sum(c) / sum(c * c) AS neff
+    FROM (SELECT donor_id,
+                 count(${v}_num) AS c,
+                 sum(${v}_num) AS s,
+                 sum(${v}_num * ${v}_num) AS q
+          FROM 'pop.parquet'
+          WHERE ${v}_num IS NOT NULL ${dove}
+          GROUP BY donor_id)`).join("\nUNION ALL");
+}
+
+async function datiFiducia() {
+  const r = await conn.query(sqlFiducia(predicato(null)));
+  const out = new Map();
+  for (const x of r) {
+    const n = Number(x.n);
+    if (!n) continue;
+    const varianza = Number(x.varianza) || 0;
+    const neff = Number(x.neff) || 1;
+    out.set(x.var, {
+      n, neff, donatori: Number(x.donatori), media: Number(x.media), varianza,
+      ci: 1.96 * Math.sqrt(varianza / neff),
+      ciNaive: 1.96 * Math.sqrt(varianza / n),
+    });
+  }
+  return out;
+}
+
+function disegnaFiducia(d) {
+  if (!ordineFid) {
+    ordineFid = [...d.entries()]
+      .filter(([v]) => !A_PARTE.has(v))
+      .sort((a, b) => b[1].media - a[1].media).map(([v]) => v);
+    for (const v of Object.keys(ISTITUZIONI))
+      if (A_PARTE.has(v) && d.has(v)) ordineFid.push(v);
+  }
+  const px = (x) => (x / 10 * 100).toFixed(2) + "%";
+  let html = "";
+  for (const v of ordineFid) {
+    const s = d.get(v);
+    if (!s) continue;
+    const nz = NAZIONALI[v];
+    const griglia = [0, 2, 4, 6, 8, 10].map(
+      (t) => `<span class="griglia10" style="left:${px(t)}"></span>`).join("");
+    html += `<div class="fid">
+      <span class="et">${ISTITUZIONI[v]}${A_PARTE.has(v)
+        ? '<br><small>universo per esperienza, non la batteria</small>' : ""}</span>
+      <span class="fasce" title="n=${num(s.n)} · donatori ${num(s.donatori)} · n_eff ${num(s.neff)}">
+        ${griglia}
+        <span class="naive" style="left:${px(Math.max(0, s.media - s.ciNaive))};
+          width:${px(Math.min(10, s.media + s.ciNaive) - Math.max(0, s.media - s.ciNaive))}"></span>
+        <span class="onesta" style="left:${px(Math.max(0, s.media - s.ci))};
+          width:${px(Math.min(10, s.media + s.ci) - Math.max(0, s.media - s.ci))}"></span>
+        <span class="media" style="left:${px(s.media)}"></span>
+        ${nz === undefined ? "" : `<span class="naz" style="left:${px(nz)}"
+          title="Italia ${dec(nz)}"></span>`}
+      </span>
+      <span class="num">${dec(s.media)} <small>±${dec(s.ci)}</small></span>
+    </div>`;
+  }
+
+  const q = d.get("PUNTIFI10") || [...d.values()][0];
+  $("fidNota").innerHTML = q
+    ? `universo 15 anni e piu' · <b>n = ${num(q.n)}</b> ma ` +
+      `<b>n_eff = ${num(q.neff)}</b> su ${num(q.donatori)} donatori distinti: ` +
+      `la banda onesta e' <b>${dec(Math.sqrt(q.n / q.neff), 1)} volte</b> ` +
+      `piu' larga di quella ingenua.<br>` +
+      `Fascia chiara e sottile: banda calcolata su <i>n</i>. ` +
+      `Fascia scura e spessa: su <i>n_eff</i> di Kish, che e' quella vera. ` +
+      `Linea punteggiata: media nazionale, dove nota. ` +
+      `<b>Le AVQ non hanno informazione geografica</b> (assunzione 6): ` +
+      `filtrando una zona, ogni differenza e' compositiva per costruzione.`
+    : "nessun dato";
+  $("fidRighe").innerHTML = html;
+}
+
+async function aggiornaFiducia() {
+  if (!fiduciaOn) return;
+  $("fidNota").textContent = "calcolo…";
+  try { ultimoFid = await datiFiducia(); disegnaFiducia(ultimoFid); }
+  catch (e) {
+    $("fidNota").innerHTML = `errore: ${e}<br>` +
+      `Serve <code>donor_id</code> nel Parquet: rigenera con to_parquet.py.`;
+  }
+}
+
 /* ---------- proiezione: Web Mercator ----------------------------------- */
-/* mondo in [0,1]; necessario per allineare le tiles */
 const MX = (lon) => (lon + 180) / 360;
 const MY = (lat) => {
   const s = Math.sin(lat * Math.PI / 180);
   return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI);
 };
-
 function jit(id, k) {
   const x = Math.sin(id * (k ? 78.233 : 12.9898) + k * 7.13) * 43758.5453;
   return (x - Math.floor(x) - 0.5) * 1.2e-4;
 }
-
 async function prepareGeo() {
   const n = Number($("risoluzione").value);
   if (geo && geo.n === n) return geo;
   const r = await conn.query(
-    `SELECT min(lon) x0, max(lon) x1, min(lat) y0, max(lat) y1
-     FROM 'pop.parquet'`);
+    `SELECT min(lon) x0, max(lon) x1, min(lat) y0, max(lat) y1 FROM 'pop.parquet'`);
   const g = r.get(0);
   geo = { x0: Number(g.x0), x1: Number(g.x1),
           y0: Number(g.y0), y1: Number(g.y1), n };
   geo.passo = (geo.x1 - geo.x0) / n;
   geo.wx0 = MX(geo.x0); geo.wx1 = MX(geo.x1);
-  geo.wy0 = MY(geo.y1); geo.wy1 = MY(geo.y0);   // y cresce verso sud
+  geo.wy0 = MY(geo.y1); geo.wy1 = MY(geo.y0);
   return geo;
 }
 function adatta() {
@@ -432,7 +592,7 @@ function disegnaFondo(g, w, h) {
       g.drawImage(im, (i / n - vista.cx) * vista.scala + w / 2,
                   (j / n - vista.cy) * vista.scala + h / 2, s + 1, s + 1);
     }
-  g.fillStyle = "rgba(251,250,247,.42)";   // velo: i dati devono stare sopra
+  g.fillStyle = "rgba(251,250,247,.42)";
   g.fillRect(0, 0, w, h);
 }
 
@@ -472,14 +632,13 @@ async function datiMappa() {
   return { tipo: "griglia", celle };
 }
 
-/* ---------- disegno ---------------------------------------------------- */
+/* ---------- disegno mappa ---------------------------------------------- */
 let pendente = false;
 function chiediRidisegno() {
   if (pendente) return;
   pendente = true;
   requestAnimationFrame(() => { pendente = false; if (ultimoDati) rendi(); });
 }
-
 function rendi() {
   const d = ultimoDati, c = $("tela"), dpr = window.devicePixelRatio || 1;
   const w = c.clientWidth, h = c.clientHeight;
@@ -529,7 +688,6 @@ function rendi() {
       `<span style="background:rgba(124,74,45,${(f * .9).toFixed(2)})"></span>`)
       .join("") + " " + pct(vmax);
   }
-
   if ($("fondo").value) {
     g.font = "10px ui-sans-serif, sans-serif";
     g.fillStyle = "rgba(27,26,23,.6)";
@@ -537,7 +695,6 @@ function rendi() {
       : "© OpenStreetMap contributors, © CARTO", 6, h - 6);
   }
 }
-
 async function aggiornaMappa(quotaGlobale) {
   if (!mappaOn) return;
   ultimaQuota = quotaGlobale;
@@ -601,7 +758,7 @@ const CLASSE = {
   cittadinanza: "V", istruzione: "V", condizione: "V", background: "V",
   origine_genitori: "V", paese: "C", area: "C",
   sezione: "A", eta_anni: "A", via: "A", civico: "A", lon: "A", lat: "A",
-  indirizzo_fonte: "A", quinq: "A", id: "A",
+  indirizzo_fonte: "A", quinq: "A", id: "A", donor_id: "D",
 };
 const SEGNO = { V: "■", A: "◧", C: "□", D: "▨" };
 const NOME_CLASSE = { V: "vincolato dal censimento", A: "allocato",
@@ -647,12 +804,15 @@ async function apriScheda(id) {
   const avq = Object.keys(row).filter((k) => k.endsWith("_num"))
     .filter((k) => row[k] !== null && !Number.isNaN(Number(row[k])));
   if (avq.length) {
-    html += `<h3>AVQ — donato (${avq.length} su 21)</h3>` + avq.map((k) => {
-      const v = Number(row[k]);
-      return `<div class="cmp"><span class="cls" title="${NOME_CLASSE.D}">` +
-        `${SEGNO.D}</span><em>${k.replace("_num", "")}</em>` +
-        `<b>${Number.isInteger(v) ? v : v.toFixed(1)}</b></div>`;
-    }).join("");
+    html += `<h3>AVQ — donato (${avq.length} su 21` +
+      (val("donor_id") ? `, firma ${val("donor_id")}` : "") + `)</h3>` +
+      avq.map((k) => {
+        const v = Number(row[k]);
+        const et = ISTITUZIONI[k.replace("_num", "")] || k.replace("_num", "");
+        return `<div class="cmp"><span class="cls" title="${NOME_CLASSE.D}">` +
+          `${SEGNO.D}</span><em>${et}</em>` +
+          `<b>${Number.isInteger(v) ? v : v.toFixed(1)}</b></div>`;
+      }).join("");
   }
   html += `<div class="persona">${persona(row, val)}</div>`;
   s.innerHTML = html;
@@ -675,7 +835,7 @@ function persona(row, val) {
       (val("quartiere") ? `, ${val("quartiere")}` : "") + ".");
   const f = row["PUNTIFI10_num"];
   if (f !== null && f !== undefined && !Number.isNaN(Number(f)))
-    p.push(`Valuta ${Number(f)} su 10 la fiducia nel Comune.`);
+    p.push(`Valuta ${Number(f)} su 10 la fiducia nel governo comunale.`);
   return "Come la vedrebbe un agente del tier 2: " + p.join(" ");
 }
 document.addEventListener("click", (e) => {
@@ -804,6 +964,15 @@ function comeCSV() {
       r.push([a.etichetta, d.et, d.n, d.nrif === null ? "" : Math.round(d.nrif),
               pct2(d.q), pct2(d.r), d.rif === null ? "" : pct2(d.rif),
               d.rif === null ? "" : pct2(d.q - d.rif)]);
+  if (ultimoFid) {
+    r.push([]);
+    r.push(["istituzione", "n", "donatori", "n_eff", "media", "ci_onesta",
+            "ci_ingenua", "italia"]);
+    for (const [v, s] of ultimoFid)
+      r.push([ISTITUZIONI[v], s.n, s.donatori, Math.round(s.neff),
+              dec(s.media), dec(s.ci), dec(s.ciNaive),
+              NAZIONALI[v] === undefined ? "" : dec(NAZIONALI[v])]);
+  }
   return r.map((x) => x.map((c) =>
     /[";\n]/.test(String(c)) ? `"${c}"` : c).join(";")).join("\n");
 }
@@ -825,7 +994,17 @@ function comeLaTeX() {
     }
     t += "\\addlinespace\n";
   }
-  return t + "\\bottomrule\n\\end{tabular}\n";
+  t += "\\bottomrule\n\\end{tabular}\n";
+  if (ultimoFid) {
+    t += `\n% Fiducia istituzionale. CI al 95% su n_eff di Kish, non su n.\n` +
+      `\\begin{tabular}{lrrrr}\n\\toprule\nIstituzione & $n$ & $n_{\\rm eff}$ & ` +
+      `Media & IC 95\\% \\\\\n\\midrule\n`;
+    for (const [v, s] of ultimoFid)
+      t += `${ISTITUZIONI[v]} & ${s.n} & ${Math.round(s.neff)} & ` +
+           `${dec(s.media)} & $\\pm${dec(s.ci)}$ \\\\\n`;
+    t += "\\bottomrule\n\\end{tabular}\n";
+  }
+  return t;
 }
 function comeSVG(nome) {
   const a = manifest.attributi.find((x) => x.nome === nome);
@@ -869,7 +1048,10 @@ async function aggiorna() {
   scriviURL();
   const res = await marginali();
   disegna(res);
-  await aggiornaMappa(res.n / manifest.comune.individui);
+  await Promise.all([
+    aggiornaFiducia(),
+    aggiornaMappa(res.n / manifest.comune.individui),
+  ]);
 }
 document.addEventListener("click", async (e) => {
   const x = e.target.closest("[data-x-attr]");
@@ -888,6 +1070,13 @@ document.addEventListener("click", async (e) => {
   s.has(mod) ? s.delete(mod) : s.add(mod);
   if (!s.size) attivi.delete(attr);
   aggiorna();
+});
+$("btn-fiducia").addEventListener("click", async (e) => {
+  fiduciaOn = !fiduciaOn;
+  e.currentTarget.setAttribute("aria-pressed", String(fiduciaOn));
+  $("zonaFiducia").hidden = !fiduciaOn;
+  scriviURL();
+  if (fiduciaOn) await aggiornaFiducia();
 });
 $("btn-mappa").addEventListener("click", async (e) => {
   mappaOn = !mappaOn;
@@ -955,7 +1144,9 @@ $("citta").addEventListener("change", (e) => {
   leggiURL();
   $("btn-delta").setAttribute("aria-pressed", String(delta));
   $("btn-mappa").setAttribute("aria-pressed", String(mappaOn));
+  $("btn-fiducia").setAttribute("aria-pressed", String(fiduciaOn));
   $("zonaMappa").hidden = !mappaOn;
+  $("zonaFiducia").hidden = !fiduciaOn;
   $("modo").value = modo;
   $("capPunti").hidden = modo !== "punti";
   $("risoluzione").hidden = modo !== "quota";

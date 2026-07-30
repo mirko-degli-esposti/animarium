@@ -3,19 +3,19 @@
 **Synthetic populations of Italian cities.**
 
 Visualizzatore delle popolazioni sintetiche GSP: scelta della citta', filtro
-sugli attributi, confronto dei marginali col dato censuario, mappa degli
-individui, scheda del singolo.
+sugli attributi, confronto dei marginali col dato censuario, fiducia
+istituzionale, mappa degli individui, scheda del singolo.
 
 Consuma i file `popolazione_K9C_avq_full.csv` prodotti dalla pipeline GSP.
 Non li genera. Pipeline e dati stanno in `~/progetti/gsp/`, documentati in
 `GSP_popolazioni_full_riferimento_v16.md`.
 
 Citta': **Bologna** (390.098), **Brescia** (198.259), **Parma** (198.121),
-**Modena** (184.597). Bundle complessivo: **16,65 MB**.
+**Modena** (184.597). Bundle complessivo: **18,1 MB**.
 
 **Online, in forma provvisoria**: <https://animarium.pages.dev>
 Bundle completo, con avviso esplicito sulla risoluzione dei dati. Decisioni e
-limiti in `note/design_animarium_v07.md`, §15.
+limiti in `note/design_animarium_v08.md`, §15.
 
 ---
 
@@ -38,7 +38,8 @@ done
 python build/build_indice.py
 ```
 
-Ripubblicare:
+Ripubblicare — i due comandi vanno **sempre in coppia**, perche' `deploy.py`
+copia il bundle da disco:
 
 ```bash
 python build/deploy.py
@@ -65,18 +66,19 @@ animarium/
 |---|---|---|
 | F0 | diagnostici sulla pipeline | ✔ Modena e Parma — mancano Bologna e Brescia |
 | F1 | smoke test DuckDB-WASM | ✔ modello di costo verificato |
-| F2 | `donor_id` dalla firma AVQ | ✔ senza toccare la pipeline |
+| F2 | `donor_id` dalla firma AVQ | ✔ ricostruito e messo nel Parquet |
 | F3 | pannello dei marginali | ✔ |
 | F4 | riferimento censuario dal constraint set | ✔ copertura 20% delle coppie |
-| F5 | mappa | ◧ quota, punti, navigazione, base cartografica |
-| — | **pubblicazione** | ✔ provvisoria, in anticipo su F9 |
-| F6 | `donor_id` nel Parquet + pannello AVQ con `n_eff` | ← **prossimo** |
-| F7 | confronto fra citta' | |
-| F8 | pagina Metodo | |
-| F9 | grafica e pubblicazione definitiva | |
+| F5 | mappa | ✔ quota, punti, navigazione, base cartografica |
+| F6 | fiducia istituzionale con `n_eff` per variabile | ✔ |
+| — | **pubblicazione** | ✔ provvisoria, in anticipo |
+| F7 | le altre AVQ (salute, ambiente, BMI, MH, binarie) | ← **prossimo** |
+| F8 | confronto fra citta' | |
+| F9 | pagina Metodo | |
+| F10 | grafica e pubblicazione definitiva | |
 
 Dettagli, misure, questioni aperte e ritrattazioni:
-`note/design_animarium_v07.md`.
+`note/design_animarium_v08.md`.
 
 ---
 
@@ -100,17 +102,30 @@ quartiere c'e' per sesso, eta', istruzione, background e cittadinanza; non c'e'
 per stato civile, condizione e origine dei genitori — e il pannello lo dichiara
 invece di nasconderlo.
 
+**Fiducia istituzionale** (pulsante `fiducia`, pigra: legge il blocco B solo
+su richiesta): dodici istituzioni su asse 0–10, ordinate per media, con **due
+bande sovrapposte** — quella sottile calcolata su `n`, quella spessa su
+`n_eff` di Kish. La distanza fra le due e' la ragione per cui `n_eff` esiste:
+su Modena la banda vera e' **7 volte** piu' larga di quella ingenua.
+
+Tacche punteggiate per le medie nazionali dove note. `VOTOUSL` sta in fondo,
+fuori batteria: e' un giudizio su un servizio ricevuto, con universo per
+esperienza e mancanza non ignorabile.
+
+Le AVQ **non hanno informazione geografica** (assunzione 6): filtrando una
+zona, ogni differenza e' compositiva per costruzione, e il pannello lo dice.
+
 **Mappa** (pulsante `mappa`, pigra: legge il blocco C solo su richiesta):
 
 - **quota** — frazione del filtro sul totale locale, celle di ~150 m, sotto 25
   abitanti in grigio. E' l'unico modo informativo;
 - **punti** — individui campionati con jitter deterministico, sopra uno strato
   grigio della citta' intera. **Cliccabili**: si apre la scheda dell'individuo,
-  con il livello di garanzia per ogni attributo.
+  con il livello di garanzia per ogni attributo e la firma del donatore.
 
 Zoom con la rotella, trascinamento, `adatta`. Base cartografica opzionale.
 
-**Export**: CSV e LaTeX (`booktabs`) della tabella completa, SVG per singolo
+**Export**: CSV e LaTeX (`booktabs`) di marginali e fiducia, SVG per singolo
 pannello — costruito a mano, senza librerie di grafici.
 
 ---
@@ -124,8 +139,8 @@ python build/to_parquet.py 036023 --drop-avq-raw
 ```
 CSV → Parquet ottimizzato per query filtrate dal browser: colonne in tre
 blocchi per uso, righe per `zona, sezione`, row group da 20.000, `id`
-delta-encoded, coordinate in byte-stream-split, AVQ grezze eliminate.
-Modena: 57,76 MB → **3,12 MB**.
+delta-encoded, coordinate in byte-stream-split, `donor_id` dalla firma AVQ,
+AVQ grezze eliminate. Modena: 57,76 MB → **3,47 MB**.
 
 ```bash
 python build/manifest_min.py 036023
@@ -209,11 +224,10 @@ colonne o cinque dello stesso blocco costa identico.
 costo(query) = footer + Σ  peso(blocco) × (row group non potati / totale)
 ```
 
-Su Modena: footer 0,073 MB · blocco filtri 0,675 · blocco AVQ 1,411 · blocco
-mappa 0,980. Una sessione completa costa **~2,5 MB**; i filtri successivi
-dentro lo stesso blocco costano **zero byte** e 100–220 ms. La potatura per
-riga vale il 10,7%, quella spaziale il 22% — quest'ultima solo grazie
-all'ordinamento per `zona`.
+Su Modena: footer 0,073 MB · blocco filtri 0,675 · blocco AVQ 1,757 · blocco
+mappa 0,980. I filtri successivi dentro lo stesso blocco costano **zero byte**
+e 100–220 ms. La potatura per riga vale il 10,7%, quella spaziale il 22% —
+quest'ultima solo grazie all'ordinamento per `zona`.
 
 ---
 
@@ -225,25 +239,37 @@ senza termine di paragone non e' una misura, e' un'impressione.
 Ogni errore trovato finora e' emerso confrontando con una configurazione a
 risposta nota: Q5 contro Q0, Q3 contro Q3N, Q6 contro Q2, MAE grezzo contro
 normalizzato, conteggio dei distinti contro Kish, errore relativo contro
-z-score. Due risultati sono stati ritirati per questa via, e sono annotati
-come tali nel documento di design.
+z-score, `n_eff` sull'universo giusto contro quello sbagliato. Due risultati
+sono stati ritirati per questa via e una stima corretta di un fattore 2,1;
+sono annotati come tali nel documento di design.
 
 ---
 
 ## Da riprendere
 
-1. **`donor_id` nell'export** e pannello AVQ con `n_eff` per universo di
-   variabile. E' il pezzo mancante della catena dell'onesta': oggi le AVQ
-   compaiono solo nella scheda individuo. E' anche cio' che serve al lavoro su
-   Caffaro.
+1. **Le altre AVQ** nel pannello, con la stessa disciplina della fiducia:
+   universo dichiarato invece che copertura, banda su `n_eff` della variabile,
+   riga di scomposizione compositiva. `BMI` e `BMIMIN` vanno unite — sono la
+   stessa misura su due universi, adulti e minori. **Non serve rigenerare
+   niente**: le 21 AVQ sono gia' nel Parquet.
 2. **`--pubblico` in `to_parquet.py`**: toglie `via` e `civico`. Previsto dal
    design fin dall'inizio, mai scritto, e necessario prima della pubblicazione
-   per arXiv — dove la configurazione si rovescia: codice pubblico, dati
+   per arXiv, dove la configurazione si rovescia: codice pubblico, dati
    degradati.
-3. Definizioni vere di `macroeta` e `istr4` in `assign_avq.py`; definizione di
-   MRE in `fit_cs.py`, che differisce da quella dello strumento per un fattore
-   `√(2/π)`.
+3. **Due cose da verificare prima che finiscano in una figura**: la fonte
+   delle cinque medie nazionali AVQ 2024, entrate nel design senza citazione;
+   e `FORZE_ARMATE`, dodicesima voce della batteria, sfuggita alla lista di
+   `assign_avq.py` perche' seleziona per prefisso `PUNTIFI` — quindi la
+   popolazione ne ha undici su dodici.
 
-Sul binario della pipeline, separato: le due riparazioni post-hoc (permutazione
-di `istruzione`, 26 esclusioni α=0), i diagnostici su Bologna e Brescia, e il
-blocco `sesso × background × origine_genitori` che mostra |z| fino a 4,0.
+**Richiedono di rigenerare le popolazioni**, e conviene farlo in un colpo solo
+quando ci sara' un motivo: `FORZE_ARMATE` nella lista AVQ, `donor_anno` per il
+*planned missing*, `cella_avq` col livello di collasso, e le 26 esclusioni α=0
+in `build_constraints.py`. Rigenerare invalida i `donor_id` e tutte le misure,
+quindi non si fa per una cosa sola.
+
+Sul binario della pipeline, separato: la permutazione di `istruzione` entro
+(zona, sesso, bin) — che e' **post-hoc**, quindi non richiede rigenerazione —
+i diagnostici su Bologna e Brescia, il blocco `sesso × background ×
+origine_genitori` che mostra |z| fino a 4,0, e il design effect dell'AVQ, che
+serve per comporre `n_eff`.
