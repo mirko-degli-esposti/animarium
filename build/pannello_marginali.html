@@ -197,6 +197,7 @@
   <span id="box-reale" hidden>· censimento <span class="cifra" id="n-rea">—</span>
     <span class="cifra" id="n-sca"></span></span>
   <span><span class="cifra" id="n-pct">—</span> della citta'</span>
+  <span id="box-cop" hidden></span>
   <span id="pillole"></span>
   <span class="attrezzi">
     <button class="az" id="btn-fiducia" aria-pressed="false">fiducia</button>
@@ -306,6 +307,9 @@ function avviso(cls, html) {
    assign_avq.py seleziona per prefisso PUNTIFI. La batteria e' quindi
    incompleta di una voce su dodici. */
 const ISTITUZIONI = {
+  FIDMED:    "Medici del SSN",
+  FIDINF:    "Infermieri del SSN",
+  FORZE_ARMATE: "Forze armate",
   PUNTIFI1:  "Parlamento italiano",
   PUNTIFI2:  "Sistema giudiziario",
   PUNTIFI3:  "Forze dell'ordine",
@@ -332,8 +336,17 @@ const NAZIONALI = {
 /* VOTOUSL non appartiene alla batteria: e' un giudizio su un servizio
    ricevuto, quindi con filtro per esperienza — la copertura cresce con
    l'eta' (0,12 a 15-24, 0,30 a 65-74). Chi risponde e' sistematicamente
-   diverso da chi non risponde, e la mancanza NON e' ignorabile. */
+   diverso da chi non risponde, e la mancanza NON e' ignorabile.
+
+   FORZE_ARMATE invece resta nella batteria: copre poco (~21%) perche' e' a
+   rotazione DENTRO l'annata 2024, ma non ha filtro per esperienza — la
+   mancanza e' ignorabile e il sottocampione con valore e' casuale.
+   Copertura bassa e mancanza non ignorabile sono cose diverse. */
 const A_PARTE = new Set(["VOTOUSL"]);
+
+/* Sotto questa copertura la riga porta un avviso: n_eff crolla e la banda
+   diventa larghissima — corretto, ma va spiegato. */
+const COPERTURA_BASSA = 0.30;
 
 /* ---------- URL -------------------------------------------------------- */
 function leggiURL() {
@@ -460,6 +473,7 @@ async function datiFiducia() {
     const neff = Number(x.neff) || 1;
     out.set(x.var, {
       n, neff, donatori: Number(x.donatori), media: Number(x.media), varianza,
+      copertura: n / manifest.comune.individui,
       ci: 1.96 * Math.sqrt(varianza / neff),
       ciNaive: 1.96 * Math.sqrt(varianza / n),
     });
@@ -485,7 +499,10 @@ function disegnaFiducia(d) {
       (t) => `<span class="griglia10" style="left:${px(t)}"></span>`).join("");
     html += `<div class="fid">
       <span class="et">${ISTITUZIONI[v]}${A_PARTE.has(v)
-        ? '<br><small>universo per esperienza, non la batteria</small>' : ""}</span>
+        ? '<br><small>universo per esperienza, non la batteria</small>'
+        : (s.copertura < COPERTURA_BASSA
+           ? `<br><small>${pct(s.copertura)} del campione: modulo a rotazione` +
+             `</small>` : "")}</span>
       <span class="fasce" title="n=${num(s.n)} · donatori ${num(s.donatori)} · n_eff ${num(s.neff)}">
         ${griglia}
         <span class="naive" style="left:${px(Math.max(0, s.media - s.ciNaive))};
@@ -753,10 +770,16 @@ $("btn-adatta").addEventListener("click", () => {
 });
 
 /* ---------- scheda individuo ------------------------------------------- */
+/* `paese` e `area` sono di classe C — condizionati ai margini censuari con
+   struttura geografica secondo il tier. Ma con tier 0 non c'e' fonte locale,
+   quindi non hanno ALCUNA informazione sub-comunale: si comportano esattamente
+   come le AVQ, e la classe degrada a D. Un solo meccanismo invece di un badge
+   nuovo. Il manifest porta gia' `paese_classe` calcolato da G.tier(). */
+const classePaese = () => (manifest.comune.paese_classe || "C");
 const CLASSE = {
   zona: "V", quartiere: "V", sesso: "V", eta: "V", stato_civile: "V",
   cittadinanza: "V", istruzione: "V", condizione: "V", background: "V",
-  origine_genitori: "V", paese: "C", area: "C",
+  origine_genitori: "V",
   sezione: "A", eta_anni: "A", via: "A", civico: "A", lon: "A", lat: "A",
   indirizzo_fonte: "A", quinq: "A", id: "A", donor_id: "D",
 };
@@ -795,7 +818,8 @@ async function apriScheda(id) {
     `${COMUNE}-${String(id).padStart(7, "0")}</div>`;
   for (const [tit, campi] of GRUPPI) {
     const righe = campi.filter((k) => val(k) !== null).map((k) => {
-      const c = CLASSE[k] || "D";
+      const c = (k === "paese" || k === "area") ? classePaese()
+                                                : (CLASSE[k] || "D");
       return `<div class="cmp"><span class="cls" title="${NOME_CLASSE[c]}">` +
         `${SEGNO[c]}</span><em>${k}</em><b>${etichettaMod(k, val(k))}</b></div>`;
     });
@@ -903,6 +927,9 @@ function pannello(a, dati) {
               <span class="val">${val}</span></div>`;
   }).join("");
   const nota = [];
+  if ((a.nome === "paese" || a.nome === "area") && classePaese() === "D")
+    nota.push("nessuna struttura sub-comunale (tier 0): come le AVQ, "
+              + "ogni variazione spaziale e' compositiva");
   if (dati.rifBlocco) {
     nota.push(`censimento da ${dati.rifBlocco.vars.join("×")}`);
     if (dati.scartoMax !== null) nota.push(`scarto max ${pct2(dati.scartoMax)}%`);
@@ -936,6 +963,21 @@ function disegna(res) {
   $("sottotitolo").textContent =
     `${num(manifest.comune.individui)} individui sintetici · ` +
     `marginali in ${res.ms.toFixed(0)} ms`;
+
+  /* Copertura del riferimento censuario: quale frazione degli incroci
+     INTERROGABILI e' osservata. Il denominatore dipende dal livello — 333
+     combinazioni con nove variabili, 96 con sei — quindi i conteggi non sono
+     confrontabili fra comuni, le percentuali si'. */
+  const cp = RIF && RIF.copertura;
+  if (cp) {
+    $("box-cop").hidden = false;
+    $("box-cop").textContent =
+      `· riferimento ${(cp.coperte / cp.totali * 100).toFixed(0)}% degli incroci`;
+    $("box-cop").title =
+      `${cp.coperte} incroci osservati su ${cp.totali} interrogabili, con ` +
+      `${cp.n_vars} attributi nel constraint set. Il denominatore dipende dal ` +
+      `livello: i conteggi non sono confrontabili fra comuni, le percentuali si.`;
+  } else $("box-cop").hidden = true;
   pillole();
 }
 function pillole() {
@@ -1121,7 +1163,8 @@ $("citta").addEventListener("change", (e) => {
     const ix = await r.json();
     $("citta").innerHTML = ix.comuni.map((c) =>
       `<option value="${c.codice}"${c.codice === COMUNE ? " selected" : ""}>` +
-      `${c.nome} — ${num(c.individui)}</option>`).join("");
+      `${c.nome} — ${num(c.individui)}` +
+      `${c.livello ? "" : " · non articolato"}</option>`).join("");
   } catch (e) {
     $("citta").innerHTML = `<option>${COMUNE}</option>`;
     avviso("", "<b>Indice delle citta' assente</b>. " +

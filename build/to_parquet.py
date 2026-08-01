@@ -53,6 +53,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 import time
 
@@ -61,11 +62,12 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-AVQ = ["AMBIENTE", "FIDUCIA", "SALUTE", "CRONI", "FUMO", "MH",
-       "BMI", "BMIMIN", "CPESO",
-       "PUNTIFI1", "PUNTIFI2", "PUNTIFI3", "PUNTIFI4", "PUNTIFI5",
-       "PUNTIFI6", "PUNTIFI7", "PUNTIFI8", "PUNTIFI10", "PUNTIFI12",
-       "PUNTIFI13", "VOTOUSL"]
+# Il set AVQ NON e' cablato qui: viene da gsp_common, che e' la sola fonte
+# di verita'. Cablarlo significa che aggiungere una variabile alla pipeline
+# non la fa comparire nel viewer, e nessuno se ne accorge — e' lo stesso
+# schema per cui FORZE_ARMATE era sfuggita alla lista di assign_avq.py.
+AVQ = None          # popolato in main() da G.AVQ_TARGETS + G.AVQ_OPZIONALI
+LIVELLO = None      # livello del constraint set risolto (K9C, K6C, ...)
 
 # Blocco A — filtri e marginali. E' la lettura che l'interfaccia fa sempre.
 BLOCCO_A = ["zona", "quartiere", "sesso", "eta", "stato_civile",
@@ -83,21 +85,37 @@ GSP_SCRIPTS = os.path.expanduser("~/progetti/gsp/scripts")
 
 # --------------------------------------------------------------------------
 
+def carica_gsp():
+    if GSP_SCRIPTS not in sys.path:
+        sys.path.insert(0, GSP_SCRIPTS)
+    try:
+        import gsp_common as G  # type: ignore
+        return G
+    except Exception as e:
+        sys.exit(f"errore: gsp_common non importabile ({e})")
+
+
 def risolvi(comune, anno, pop_file, out):
+    """Risolve il file popolazione senza cablare il livello.
+
+    K10C e' escluso di proposito: su Brescia e' materiale sperimentale
+    residuo, e il viewer non deve mai mostrarlo. Se un giorno diventasse il
+    livello di produzione, questa riga va cambiata consapevolmente.
+    """
+    livello = None
     if pop_file is None:
-        if GSP_SCRIPTS not in sys.path:
-            sys.path.insert(0, GSP_SCRIPTS)
-        try:
-            import gsp_common as G  # type: ignore
-            pop_file = os.path.join(G.path_comune(comune),
-                                    f"constraints_{anno}",
-                                    "popolazione_K9C_avq_full.csv")
-        except Exception as e:
-            sys.exit(f"errore: gsp_common non importabile ({e}); usa --pop-file")
+        G = carica_gsp()
+        cdir = G.path_constraints(comune, anno)
+        nome = G.resolve_pop_file(cdir, suffisso="_avq_full",
+                                  escludi=["K10C"])
+        pop_file = os.path.join(cdir, nome)
+        m = re.search(r"popolazione_(K\d+C)_", nome)
+        livello = m.group(1) if m else "?"
     if not os.path.exists(pop_file):
         sys.exit(f"errore: file non trovato: {pop_file}")
     if out is None:
         out = os.path.join("bundle", "comuni", comune, "pop.parquet")
+    globals()["LIVELLO"] = livello
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     return pop_file, out
 
@@ -147,8 +165,15 @@ def main():
                          "ricostruibili da donor_anno (design §3.2)")
     args = ap.parse_args()
 
+    global AVQ
+    G = carica_gsp()
+    AVQ = list(G.AVQ_TARGETS) + list(G.AVQ_OPZIONALI)
+
     src, out = risolvi(args.comune, args.anno, args.pop_file, args.out)
     print(f"[info] sorgente: {src}")
+    if LIVELLO:
+        print(f"[info] livello risolto: {LIVELLO} · "
+              f"{len(AVQ)} variabili AVQ dal registro")
     print(f"[info] destinazione: {out}")
 
     # --- lettura ----------------------------------------------------------
@@ -201,9 +226,17 @@ def main():
 
     # --- ordinamento righe + id -------------------------------------------
     chiave = [c.strip() for c in args.sort.split(",") if c.strip()]
-    mancanti = [c for c in chiave if c not in p.columns]
-    if mancanti:
-        sys.exit(f"errore: chiave di ordinamento assente: {mancanti}")
+    # Degrada invece di fallire: i comuni senza articolazione sub-comunale
+    # (K6C) non hanno `zona`, e li' l'ordinamento per sola sezione e' quello
+    # giusto — la potatura spaziale per zona non serve perche' la zona non
+    # esiste.
+    assenti = [c for c in chiave if c not in p.columns]
+    chiave = [c for c in chiave if c in p.columns]
+    if assenti:
+        print(f"[info] chiave di ordinamento ridotta: {assenti} assenti "
+              f"-> ordino per {chiave or ['(nessuna)']}")
+    if not chiave:
+        sys.exit("errore: nessuna colonna della chiave di ordinamento esiste")
     p = p.sort_values(chiave, kind="stable").reset_index(drop=True)
     p["id"] = np.arange(len(p), dtype="int32")
     print(f"[info] righe ordinate per {' , '.join(chiave)}")
@@ -299,14 +332,12 @@ def main():
     for nome, v in s.sort_values(ascending=False).head(12).items():
         print(f"  {nome:<22} {mb(v)}  {v / par_bytes:6.1%}")
 
-    tipiche = [c for c in ["zona", "sesso", "eta", "istruzione",
-                           "cittadinanza", "sezione"] if c in s.index]
+    # La tabella per blocco qui sopra E' la tabella dei costi: DuckDB legge
+    # intervalli di byte contigui, quindi il costo di una query e' il peso
+    # dei blocchi che tocca, non la somma delle colonne che chiede. Misurato:
+    # tre colonne o cinque dello stesso blocco costano identico.
     print()
-    print(f"Aggregazione tipica ({', '.join(tipiche)}):")
-    print(f"  colonne         {mb(s[tipiche].sum())} "
-          f"= {s[tipiche].sum() / par_bytes:.1%} del file")
-    print("  Lo smoke test misurera' 1,8-3,5 volte tanto: DuckDB legge a "
-          "blocchi contigui.")
+    print(f"  footer, pagato una volta per sessione   {mb(par_bytes - s.sum())}")
 
     # --- verifica ---------------------------------------------------------
     ver = pq.read_table(out, columns=["id"] + chiave).to_pandas()

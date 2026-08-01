@@ -42,6 +42,7 @@ from __future__ import annotations
 import argparse
 import collections
 import datetime as dt
+import glob
 import itertools
 import json
 import os
@@ -49,9 +50,37 @@ import sys
 
 GSP = os.path.expanduser("~/progetti/gsp/data/comuni")
 
-# attributi che il pannello mostra; la copertura si riporta su questi
-MOSTRATI = ["zona", "sesso", "eta", "stato_civile", "cittadinanza",
-            "istruzione", "condizione", "background", "origine_genitori"]
+# Gli attributi su cui si misura la copertura NON sono cablati: sono le
+# variabili del constraint set, lette dal campo `vars`. Cablarli renderebbe
+# il denominatore sbagliato sui comuni senza articolazione sub-comunale, dove
+# le variabili sono sei e non nove — e il 20% di Bologna verrebbe confrontato
+# con un 8% di Ferrara che non significa niente, perche' 237 delle 333
+# combinazioni li' non esistono proprio.
+GSP_SCRIPTS = os.path.expanduser("~/progetti/gsp/scripts")
+
+
+def risolvi_cs(comune, anno):
+    """Trova cs_K{n}C.json senza cablare il livello.
+
+    K10C e' escluso come nel Parquet: il viewer non deve mai mostrare
+    materiale sperimentale, e le due esclusioni devono restare coerenti o il
+    riferimento censuario descriverebbe una popolazione diversa da quella
+    mostrata.
+    """
+    d = os.path.join(GSP, comune, f"constraints_{anno}")
+    cand = sorted(glob.glob(os.path.join(d, "cs_K*C.json")))
+    cand = [c for c in cand if "K10C" not in os.path.basename(c)]
+    if not cand:
+        sys.exit(f"errore: nessun cs_K*C.json in {d}")
+    if len(cand) > 1:
+        # stesso ordine di preferenza di POP_CANDIDATES: livello piu' ricco
+        ordine = ["K9C", "K8C", "K7C", "K6C"]
+        cand.sort(key=lambda c: next(
+            (i for i, k in enumerate(ordine) if k in os.path.basename(c)), 99))
+        print(f"[avviso] piu' constraint set in {os.path.basename(d)}: "
+              f"{[os.path.basename(c) for c in cand]} -> uso il primo",
+              file=sys.stderr)
+    return cand[0]
 
 
 def riga(t):
@@ -72,8 +101,7 @@ def main():
                     help="tolleranza per considerare completo un blocco")
     args = ap.parse_args()
 
-    f_cs = args.cs or os.path.join(GSP, args.comune, f"constraints_{args.anno}",
-                                   "cs_K9C.json")
+    f_cs = args.cs or risolvi_cs(args.comune, args.anno)
     if not os.path.exists(f_cs):
         sys.exit(f"errore: constraint set non trovato: {f_cs}")
     out = args.out or os.path.join("bundle", "comuni", args.comune,
@@ -82,7 +110,10 @@ def main():
     with open(f_cs, encoding="utf-8") as h:
         cs = json.load(h)
     V, C, N = cs["vars"], cs["categories"], cs["pop_size"]
+    mostrati = list(V)          # il denominatore della copertura E' questo
     print(f"[info] {f_cs}")
+    print(f"[info] {len(mostrati)} variabili nel constraint set: "
+          f"{', '.join(mostrati)}")
     print(f"[info] livello {cs.get('livello')} · N = {N:,}".replace(",", "."))
 
     raw = collections.defaultdict(list)
@@ -138,15 +169,25 @@ def main():
         return any(want <= v for v in completi)
 
     riga("Copertura — filtro sulle righe, attributo mostrato sulle colonne")
-    filtri = [(), ("zona",), ("sesso",), ("zona", "sesso"),
-              ("sesso", "eta"), ("cittadinanza",), ("zona", "sesso", "eta")]
-    intest = [a[:6] for a in MOSTRATI]
+    # I filtri di esempio si costruiscono da cio' che esiste: su un comune
+    # senza zona una riga "zona" sarebbe vuota e fuorviante.
+    base = [a for a in ("zona", "sesso", "eta", "cittadinanza")
+            if a in mostrati]
+    filtri = [()]
+    filtri += [(a,) for a in base]
+    if len(base) >= 2:
+        filtri.append((base[0], base[1]))
+    if "sesso" in mostrati and "eta" in mostrati:
+        filtri.append(("sesso", "eta"))
+    filtri = list(dict.fromkeys(filtri))
+
+    intest = [a[:6] for a in mostrati]
     print(f"{'filtro':<26}" + "".join(f"{h:>8}" for h in intest))
-    print("-" * (26 + 8 * len(MOSTRATI)))
+    print("-" * (26 + 8 * len(mostrati)))
     for F in filtri:
         et = " × ".join(F) if F else "(nessuno)"
         celle = ["" if a in F else ("  ✔" if coperto(F, a) else "  ·")
-                 for a in MOSTRATI]
+                 for a in mostrati]
         print(f"{et[:25]:<26}" + "".join(f"{c:>8}" for c in celle))
     print("\n  ✔ = esiste un blocco completo che contiene filtro e attributo,")
     print("      quindi il conteggio censuario si puo' affiancare al sintetico")
@@ -155,15 +196,28 @@ def main():
 
     # --- quante coppie sono coperte, in generale ---------------------------
     tot = cop = 0
-    for r in range(0, 3):
-        for F in itertools.combinations(MOSTRATI, r):
-            for A in MOSTRATI:
+    for k in range(0, 3):
+        for F in itertools.combinations(mostrati, k):
+            for A in mostrati:
                 if A in F:
                     continue
                 tot += 1
                 cop += coperto(F, A)
-    print(f"\nSu tutte le combinazioni con al piu' 2 attributi di filtro: "
-          f"{cop}/{tot} coperte ({cop / tot:.0%}).")
+    print(f"\nCopertura: {cop} su {tot} combinazioni ({cop / tot:.0%}) "
+          f"con al piu' due attributi di filtro.")
+    print(f"Il denominatore dipende dal livello: {len(mostrati)} variabili "
+          f"danno {tot} combinazioni.")
+    if len(mostrati) < 9:
+        print("Non confrontabile in valore assoluto con un comune articolato:")
+        print("li' le variabili sono nove e le combinazioni 333. Confrontabile")
+        print("in percentuale, che misura quale frazione degli incroci")
+        print("INTERROGABILI e' osservata — e su un comune non articolato e'")
+        print("piu' alta, perche' ci sono meno incroci non vincolati.")
+
+    rif["copertura"] = {"coperte": cop, "totali": tot,
+                        "vars": mostrati, "n_vars": len(mostrati)}
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(rif, f, ensure_ascii=False, separators=(",", ":"))
 
 
 if __name__ == "__main__":

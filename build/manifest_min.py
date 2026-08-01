@@ -163,8 +163,23 @@ ETICHETTE_MOD = {
     },
 }
 
-NOMI = {"017029": "Brescia", "034027": "Parma",
-        "037006": "Bologna", "036023": "Modena"}
+GSP_SCRIPTS = os.path.expanduser("~/progetti/gsp/scripts")
+
+# Etichetta del filtro spaziale: dipende dal comune, non e' sempre
+# "Quartiere". Brescia ha quartieri, Bologna zone, Ravenna aree, Reggio
+# circoscrizioni — e il registro lo sa gia'.
+ETICHETTA_LIVELLO = {"quartieri": "Quartiere", "zone": "Zona",
+                     "aree": "Area", "circoscrizioni": "Circoscrizione"}
+
+
+def carica_gsp():
+    if GSP_SCRIPTS not in sys.path:
+        sys.path.insert(0, GSP_SCRIPTS)
+    try:
+        import gsp_common as G  # type: ignore
+        return G
+    except Exception as e:
+        sys.exit(f"errore: gsp_common non importabile ({e})")
 
 
 def etichetta_default(v):
@@ -190,7 +205,25 @@ def main():
     out = args.out or os.path.join("bundle", "comuni", args.comune,
                                    "manifest.json")
 
+    G = carica_gsp()
+    i_reg = G.info(args.comune)
+    livello = i_reg["livello"]
+    n_zone = i_reg["livelli"][livello]["n"] if livello else 0
+
     disponibili = set(pq.ParquetFile(par).schema_arrow.names)
+
+    # `zona` degenere: nei comuni senza articolazione sub-comunale la
+    # colonna esiste ma ha un valore solo ('0'). Mostrarla darebbe un
+    # pannello con una barra al 100%, che e' peggio di non averlo.
+    zona_degenere = False
+    if "zona" in disponibili:
+        nz = pq.read_table(par, columns=["zona"]).column(0).unique()
+        zona_degenere = len(nz) <= 1
+        if zona_degenere:
+            disponibili.discard("zona")
+            print(f"[info] {i_reg['nome']}: `zona` degenere "
+                  f"(valore unico {nz[0]}), esclusa dagli attributi")
+
     voluti = [a for a in ATTRIBUTI if a[0] in disponibili]
     mancanti = [a[0] for a in ATTRIBUTI if a[0] not in disponibili]
     if mancanti:
@@ -252,6 +285,9 @@ def main():
                      "etichetta": et.get(str(m), etichetta_default(m)),
                      "n": int(vc[m])} for m in sequenza]
 
+        if nome == "zona" and livello:
+            etichetta = ETICHETTA_LIVELLO.get(livello, livello.capitalize())
+
         voce = {"nome": nome, "etichetta": etichetta, "tipo": tipo,
                 "ordinamento": marca, "n_modalita": len(modalita),
                 "modalita": modalita}
@@ -265,13 +301,27 @@ def main():
 
     manifest = {
         "generato": dt.datetime.now().isoformat(timespec="seconds"),
-        "nota": ("manifest minimo di F3: etichette, ordini e conteggi non "
-                 "filtrati. Riferimenti censuari, stati di garanzia e "
-                 "geometrie arrivano in F4."),
+        "nota": ("Etichette, ordini e conteggi non filtrati. Gli attributi "
+                 "elencati sono SOLO quelli presenti nel Parquet: i comuni "
+                 "senza articolazione sub-comunale (livello K6C) non hanno "
+                 "zona, background e origine_genitori, e il pannello si "
+                 "costruisce da questa lista, quindi non li nomina mai."),
         "comune": {"codice": args.comune,
-                   "nome": NOMI.get(args.comune, args.comune),
+                   "nome": i_reg["nome"],
+                   "regione": i_reg["regione"],
                    "individui": n_tot,
-                   "parquet": "pop.parquet"},
+                   "parquet": "pop.parquet",
+                   "livello": livello,
+                   "livello_etichetta": (ETICHETTA_LIVELLO.get(livello, livello)
+                                         if livello else None),
+                   "zone": n_zone,
+                   "zona_degenere": zona_degenere,
+                   # tier del condizionale geografico per `paese`, derivato
+                   # da opendata_paese. Con tier 0 `paese` non ha struttura
+                   # sub-comunale: si comporta come le AVQ, quindi la sua
+                   # classe di garanzia degrada da C a D.
+                   "tier": G.tier(args.comune),
+                   "paese_classe": "D" if G.tier(args.comune) == 0 else "C"},
         "riferimento": {
             "tipo": "citta_intera",
             "spiegazione": ("La popolazione non filtrata riproduce il "

@@ -41,22 +41,10 @@ GSP = os.path.expanduser("~/progetti/gsp/data/comuni")
 
 # combinazioni logicamente impossibili, per nome.
 # (variabile A, valori A, variabile B, valori B, motivo)
-IMPOSSIBILI = [
-    ("eta", ["0-8", "9-14"],
-     "condizione", ["occupato", "in_cerca", "studente", "casalinga",
-                    "percettore_pensioni", "altra_condizione"],
-     "condizione professionale ha universo 15 anni e piu'"),
-    ("eta", ["15-24", "25-34", "35-49", "50-64", "65-74", "75+"],
-     "condizione", ["non_applicabile"],
-     "sopra i 15 anni la condizione e' sempre applicabile"),
-    ("eta", ["0-8"],
-     "istruzione", ["elementare", "media", "diploma", "laurea_o_its",
-                    "post_laurea"],
-     "universo dell'istruzione: 9 anni e piu'"),
-    ("eta", ["9-14"],
-     "istruzione", ["diploma", "laurea_o_its", "post_laurea"],
-     "soglie minime di conseguimento: 18, 20, 22 anni"),
-]
+sys.path.insert(0, os.path.expanduser("~/progetti/gsp/scripts"))
+import gsp_common as G
+
+IMPOSSIBILI = G.IMPOSSIBILI
 
 
 def carica(comune, anno, percorso):
