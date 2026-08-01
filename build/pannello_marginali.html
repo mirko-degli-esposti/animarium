@@ -70,6 +70,25 @@
                         border: 4px solid transparent;
                         border-top-color: var(--inchiostro); }
 
+  /* --- atlante regionale --- */
+  #zonaAtlante { padding: .8rem 1.5rem 0; position: relative; }
+  #atlante { width: 100%; height: 300px; display: block; background: #f4f1ea;
+             border: 1px solid var(--linea); border-radius: 3px;
+             cursor: pointer; }
+  .atl-nota { font-size: 11.5px; color: var(--tenue); margin-top: .3rem; }
+  #cartaComune { position: absolute; top: 1.4rem; right: 2rem; width: 17rem;
+             background: var(--sfondo); border: 1px solid var(--inchiostro);
+             border-radius: 3px; padding: .7rem .85rem; font-size: 12.5px;
+             box-shadow: 0 3px 16px rgba(0,0,0,.15); }
+  #cartaComune h4 { font: 600 15px/1.2 Georgia, serif; margin: 0 0 .1rem; }
+  #cartaComune .cc { display: grid; grid-template-columns: 8.5rem 1fr;
+             gap: .1rem .4rem; padding: .06rem 0; }
+  #cartaComune .cc em { font-style: normal; color: var(--tenue); }
+  #cartaComune .cc b { font-weight: 600; }
+  #cartaComune .via { margin-top: .6rem; display: flex; gap: .4rem; }
+  #cartaComune .chiudi { position: absolute; top: .4rem; right: .55rem;
+             cursor: pointer; color: var(--tenue); font-weight: 700; }
+
   #zonaMappa { padding: 1rem 1.5rem 0; position: relative; }
   .mappa-cima { display: flex; gap: .55rem; align-items: center;
                 flex-wrap: wrap; margin-bottom: .5rem; font-size: 12.5px;
@@ -190,6 +209,14 @@
   Le statistiche aggregate riproducono il censimento entro il rumore di
   campionamento, ma soltanto sugli incroci che il censimento vincola: dove
   non lo fa, il pannello lo dichiara.
+  <br><br>
+  <b>Il «tier» nell'intestazione riguarda soltanto il paese di cittadinanza
+  e l'area di origine</b>, e dice se esiste una fonte comunale che li
+  distribuisca sotto il livello del comune. <b>Non misura la qualità della
+  popolazione</b>: sesso, età, stato civile, istruzione, condizione e
+  cittadinanza sono vincolati dal censimento in ogni comune, tier 0 compreso.
+  Le variabili AVQ — salute, fiducia, ambiente — non hanno informazione
+  geografica in nessun comune.
 </div>
 
 <div class="barra-stato" id="stato" hidden>
@@ -200,6 +227,7 @@
   <span id="box-cop" hidden></span>
   <span id="pillole"></span>
   <span class="attrezzi">
+    <button class="az" id="btn-atlante" aria-pressed="false">atlante</button>
     <button class="az" id="btn-fiducia" aria-pressed="false">fiducia</button>
     <button class="az" id="btn-mappa" aria-pressed="false">mappa</button>
     <button class="az" id="btn-delta" aria-pressed="false">scarti Δ</button>
@@ -216,6 +244,12 @@
     <b style="color:var(--inchiostro)">rombo</b> censimento</span>
   <span>scarto dalla tacca = <b style="color:var(--inchiostro)">associazione</b> ·
     scarto dal rombo = <b style="color:var(--inchiostro)">errore del modello</b></span>
+</div>
+
+<div id="zonaAtlante" hidden>
+  <canvas id="atlante"></canvas>
+  <div class="atl-nota" id="atlNota"></div>
+  <div id="cartaComune" hidden></div>
 </div>
 
 <div id="zonaFiducia" hidden>
@@ -292,6 +326,7 @@ let manifest, RIF = null, conn, attivi = new Map(), delta = false, ultimo = null
 let mappaOn = false, modo = "quota", geo = null, baseXY = null, hit = null;
 let vista = null, ultimoDati = null, ultimaQuota = 0;
 let fiduciaOn = false, ordineFid = null, ultimoFid = null;
+let atlanteOn = false, INDICE = null, hitAtl = null, vistaAtl = null;
 
 function avviso(cls, html) {
   const d = document.createElement("div");
@@ -299,6 +334,189 @@ function avviso(cls, html) {
   d.innerHTML = html;
   $("avvisi").appendChild(d);
 }
+
+/* ---------- atlante regionale ----------------------------------------- */
+/* Una mappa dei comuni coperti, non solo un modo di navigare: dieci
+   capoluoghi emiliani piu' un comune da 16.000 abitanti su un territorio che
+   ne ha 328. Cosa NON copriamo e' informazione quanto cosa copriamo.
+
+   Le posizioni sono i baricentri della popolazione, calcolati da
+   build_indice.py sui lon/lat degli individui: nessuna geometria esterna.
+   Brescia sta fuori regione e non viene nascosta — e' l'unica con pool AVQ
+   lombardo, quindi il caso piu' diverso che abbiamo: compare come pastiglia
+   a margine, con il motivo scritto. */
+
+const R_MIN = 4, R_MAX = 17;
+
+/* Castenaso dista 10 km da Bologna e nella proiezione le cade quasi sopra.
+   Invece di un caso speciale, una repulsione: i dischi che si sovrappongono
+   si scostano quel tanto che basta, e una lineetta li ricollega alla
+   posizione vera. Funziona per qualunque comune si aggiunga. */
+function separa(nodi, giri = 60) {
+  for (let g = 0; g < giri; g++) {
+    let mosso = false;
+    for (let i = 0; i < nodi.length; i++)
+      for (let j = i + 1; j < nodi.length; j++) {
+        const a = nodi[i], b = nodi[j];
+        let dx = b.x - a.x, dy = b.y - a.y;
+        let d = Math.hypot(dx, dy);
+        const min = a.r + b.r + 3;
+        if (d >= min) continue;
+        if (d < 1e-6) { dx = 1; dy = 0; d = 1; }
+        const sp = (min - d) / 2;
+        const ux = dx / d * sp, uy = dy / d * sp;
+        a.x -= ux; a.y -= uy; b.x += ux; b.y += uy;
+        mosso = true;
+      }
+    if (!mosso) break;
+  }
+  return nodi;
+}
+
+function preparaAtlante(w, h) {
+  const dentro = INDICE.comuni.filter(
+    (c) => c.lon && (c.regione || "").startsWith("emilia"));
+  if (!dentro.length) return null;
+  const xs = dentro.map((c) => MX(c.lon)), ys = dentro.map((c) => MY(c.lat));
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const mx = (x1 - x0) * .12 || 1e-4, my = (y1 - y0) * .18 || 1e-4;
+  const s = Math.min((w - 90) / (x1 - x0 + 2 * mx),
+                     (h - 40) / (y1 - y0 + 2 * my));
+  return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, scala: s, min: s, dentro };
+}
+
+function disegnaAtlante() {
+  const c = $("atlante"), dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = c.clientHeight;
+  c.width = w * dpr; c.height = h * dpr;
+  const g = c.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+
+  vistaAtl = preparaAtlante(w, h);
+  if (!vistaAtl) { $("atlNota").textContent = "indice senza coordinate"; return; }
+  disegnaFondo(g, w, h, vistaAtl);
+
+  const px = (lon) => (MX(lon) - vistaAtl.cx) * vistaAtl.scala + w / 2;
+  const py = (lat) => (MY(lat) - vistaAtl.cy) * vistaAtl.scala + h / 2;
+  const maxPop = Math.max(...INDICE.comuni.map((x) => x.individui));
+  const raggio = (n) => R_MIN + (R_MAX - R_MIN) * Math.sqrt(n / maxPop);
+
+  hitAtl = [];
+  g.font = "11px ui-sans-serif, sans-serif";
+  g.textAlign = "center";
+
+  const nodi = separa(vistaAtl.dentro.map((k) => ({
+    k, x: px(k.lon), y: py(k.lat),
+    x0: px(k.lon), y0: py(k.lat), r: raggio(k.individui),
+  })));
+
+  for (const n of nodi) {
+    const sposta = Math.hypot(n.x - n.x0, n.y - n.y0) > 2;
+    if (sposta) {                       // lineetta alla posizione vera
+      g.beginPath(); g.moveTo(n.x0, n.y0); g.lineTo(n.x, n.y);
+      g.strokeStyle = "rgba(27,26,23,.35)"; g.lineWidth = 1; g.stroke();
+      g.beginPath(); g.arc(n.x0, n.y0, 1.4, 0, 6.284);
+      g.fillStyle = "rgba(27,26,23,.5)"; g.fill();
+    }
+    const qui = n.k.codice === COMUNE;
+    g.beginPath(); g.arc(n.x, n.y, n.r, 0, 6.284);
+    g.fillStyle = qui ? "rgba(124,74,45,.85)" : "rgba(124,74,45,.34)";
+    g.fill();
+    g.lineWidth = qui ? 2 : 1;
+    g.strokeStyle = "#1b1a17"; g.stroke();
+    g.fillStyle = "#1b1a17";
+    g.fillText(n.k.nome.length > 14 ? n.k.nome.slice(0, 12) + "…" : n.k.nome,
+               n.x, n.y + n.r + 12);
+    hitAtl.push(n.x, n.y, n.r + 4, n.k.codice);
+  }
+
+  /* Brescia, e chiunque altro sia fuori regione: pastiglia a margine invece
+     che esclusa. E' l'unica con pool AVQ lombardo, quindi n_eff 5.655 contro
+     ~3.200 — nasconderla appiattirebbe il caso piu' interessante. */
+  const fuori = INDICE.comuni.filter(
+    (k) => !(k.regione || "").startsWith("emilia"));
+  if (fuori.length) {
+    g.beginPath(); g.moveTo(0, 34); g.lineTo(112, 34);
+    g.strokeStyle = "rgba(27,26,23,.18)"; g.lineWidth = 1; g.stroke();
+    g.textAlign = "left";
+    g.font = "9.5px ui-sans-serif, sans-serif";
+    g.fillStyle = "#6b6862";
+    g.fillText("fuori regione", 8, 44);
+    let fx = 22;
+    for (const k of fuori) {
+      const r = raggio(k.individui) * .85, y = 18;
+      g.beginPath(); g.arc(fx, y, r, 0, 6.284);
+      g.fillStyle = k.codice === COMUNE ? "rgba(124,74,45,.85)"
+                                        : "rgba(124,74,45,.34)";
+      g.fill();
+      g.setLineDash([3, 2]); g.lineWidth = 1; g.strokeStyle = "#1b1a17";
+      g.stroke(); g.setLineDash([]);
+      g.fillStyle = "#1b1a17";
+      g.font = "11px ui-sans-serif, sans-serif";
+      g.fillText(k.nome, fx + r + 5, y + 4);
+      hitAtl.push(fx, y, r + 4, k.codice);
+      fx += r * 2 + 78;
+    }
+    g.textAlign = "center";
+  }
+
+  const n = INDICE.comuni.length;
+  $("atlNota").innerHTML =
+    `<b>${n} comuni</b> su 328 in Emilia-Romagna` +
+    (fuori.length ? `, piu' ${fuori.map((k) => k.nome).join(", ")} ` +
+      `fuori regione — pool AVQ diverso, quindi <b>n_eff</b> diverso` : "") +
+    `. Area del cerchio proporzionale alla popolazione; i dischi che si ` +
+    `sovrapporrebbero sono scostati, con una lineetta alla posizione vera. ` +
+    `Clicca per la scheda.`;
+}
+
+function cartaComune(cod) {
+  const k = INDICE.comuni.find((x) => x.codice === cod);
+  if (!k) return;
+  const cp = k.copertura, ne = k.neff;
+  const riga = (e, v) => `<div class="cc"><em>${e}</em><b>${v}</b></div>`;
+  $("cartaComune").hidden = false;
+  $("cartaComune").innerHTML =
+    `<span class="chiudi" data-chiudi-carta>×</span><h4>${k.nome}</h4>` +
+    riga("individui", num(k.individui)) +
+    riga("articolazione", k.livello
+      ? `${k.zone} ${k.livello}` : "nessuna (K6C)") +
+    riga("tier del paese", `${k.tier}${k.tier === 0
+      ? " — nessuna fonte locale" : ""}`) +
+    (cp ? riga("riferimento",
+      `${(cp.coperte / cp.totali * 100).toFixed(0)}% ` +
+      `<span style="color:var(--tenue)">(${cp.coperte}/${cp.totali})</span>`) : "") +
+    (ne ? riga(`banda su ${ne.var}`,
+      `×${ne.banda} <span style="color:var(--tenue)">` +
+      `n/n_eff ${ne.rapporto}</span>`) : "") +
+    (ne ? `<div class="atl-nota" style="margin-top:.5rem">` +
+      `${num(ne.n)} individui poggiano su ${num(ne.n_eff)} osservazioni ` +
+      `efficaci. Un comune piccolo non satura il pool: la sua banda e' piu' ` +
+      `stretta.</div>` : "") +
+    `<div class="via">` +
+    (cod === COMUNE
+      ? `<span style="color:var(--tenue);font-size:12px">citta' corrente</span>`
+      : `<button class="az" data-vai="${cod}">apri ${k.nome}</button>`) +
+    `</div>`;
+}
+
+$("atlante").addEventListener("click", (e) => {
+  if (!hitAtl) return;
+  const r = e.target.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  for (let i = 0; i < hitAtl.length; i += 4) {
+    const dx = hitAtl[i] - mx, dy = hitAtl[i + 1] - my;
+    if (dx * dx + dy * dy <= hitAtl[i + 2] ** 2) return cartaComune(hitAtl[i + 3]);
+  }
+  $("cartaComune").hidden = true;
+});
+document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-chiudi-carta]")) $("cartaComune").hidden = true;
+  const v = e.target.closest("[data-vai]");
+  if (v) location.search = "?comune=" + v.dataset.vai;
+});
 
 /* ---------- fiducia istituzionale: costanti --------------------------- */
 /* Corrispondenza dal codebook AVQ. Il tracciato pubblicato salta il 9 e
@@ -358,6 +576,7 @@ function leggiURL() {
   delta = P.get("delta") === "1";
   mappaOn = P.get("mappa") === "1";
   fiduciaOn = P.get("fiducia") === "1";
+  atlanteOn = P.get("atlante") === "1";
   modo = P.get("modo") === "punti" ? "punti" : "quota";
 }
 function scriviURL() {
@@ -366,6 +585,7 @@ function scriviURL() {
   for (const [k, s] of attivi) if (s.size) p.set(k, [...s].join("~"));
   if (delta) p.set("delta", "1");
   if (fiduciaOn) p.set("fiducia", "1");
+  if (atlanteOn) p.set("atlante", "1");
   if (mappaOn) { p.set("mappa", "1"); p.set("modo", modo); }
   history.replaceState(null, "", "?" + p.toString());
 }
@@ -595,19 +815,20 @@ function tile(z, i, j) {
   }
   return img.complete && !img.rotto && img.naturalWidth ? img : null;
 }
-function disegnaFondo(g, w, h) {
-  if (!$("fondo").value) return;
-  const z = Math.max(1, Math.min(19, Math.round(Math.log2(vista.scala / 256))));
-  const n = 2 ** z, s = vista.scala / n;
-  const x0 = vista.cx - w / 2 / vista.scala, x1 = vista.cx + w / 2 / vista.scala;
-  const y0 = vista.cy - h / 2 / vista.scala, y1 = vista.cy + h / 2 / vista.scala;
+function disegnaFondo(g, w, h, v) {
+  v = v || vista;                    // la mappa usa `vista`, l'atlante la sua
+  if (!$("fondo").value || !v) return;
+  const z = Math.max(1, Math.min(19, Math.round(Math.log2(v.scala / 256))));
+  const n = 2 ** z, s = v.scala / n;
+  const x0 = v.cx - w / 2 / v.scala, x1 = v.cx + w / 2 / v.scala;
+  const y0 = v.cy - h / 2 / v.scala, y1 = v.cy + h / 2 / v.scala;
   for (let i = Math.floor(x0 * n); i <= Math.ceil(x1 * n); i++)
     for (let j = Math.floor(y0 * n); j <= Math.ceil(y1 * n); j++) {
       if (i < 0 || j < 0 || i >= n || j >= n) continue;
       const im = tile(z, i, j);
       if (!im) continue;
-      g.drawImage(im, (i / n - vista.cx) * vista.scala + w / 2,
-                  (j / n - vista.cy) * vista.scala + h / 2, s + 1, s + 1);
+      g.drawImage(im, (i / n - v.cx) * v.scala + w / 2,
+                  (j / n - v.cy) * v.scala + h / 2, s + 1, s + 1);
     }
   g.fillStyle = "rgba(251,250,247,.42)";
   g.fillRect(0, 0, w, h);
@@ -654,7 +875,11 @@ let pendente = false;
 function chiediRidisegno() {
   if (pendente) return;
   pendente = true;
-  requestAnimationFrame(() => { pendente = false; if (ultimoDati) rendi(); });
+  requestAnimationFrame(() => {
+    pendente = false;
+    if (ultimoDati) rendi();
+    if (atlanteOn && INDICE) disegnaAtlante();
+  });
 }
 function rendi() {
   const d = ultimoDati, c = $("tela"), dpr = window.devicePixelRatio || 1;
@@ -960,9 +1185,22 @@ function disegna(res) {
     const s = (res.n - reale) / reale;
     $("n-sca").textContent = `(${s >= 0 ? "+" : "−"}${pct2(Math.abs(s))}%)`;
   }
+  const k = manifest.comune;
   $("sottotitolo").textContent =
-    `${num(manifest.comune.individui)} individui sintetici · ` +
-    `marginali in ${res.ms.toFixed(0)} ms`;
+    `${num(k.individui)} individui sintetici · ` +
+    `${k.livello ? `${k.zone} ${k.livello}`
+                 : "nessuna articolazione sub-comunale"}` +
+    ` · tier ${k.tier} · marginali in ${res.ms.toFixed(0)} ms`;
+  $("sottotitolo").title =
+    `Tier ${k.tier}: ${{
+      0: "nessuna fonte comunale per il paese di cittadinanza",
+      1: "fonte comunale a livello di zona",
+      2: "fonte comunale a livello di zona, con dettaglio di sesso",
+      3: "microdati comunali per sezione di censimento",
+    }[k.tier]}.\n\nIl tier riguarda SOLO il paese di cittadinanza e l'area ` +
+    `di origine. Gli attributi dell'anello 1 — sesso, eta', istruzione, ` +
+    `condizione e gli altri — sono vincolati dal censimento in ogni comune, ` +
+    `qualunque sia il tier.`;
 
   /* Copertura del riferimento censuario: quale frazione degli incroci
      INTERROGABILI e' osservata. Il denominatore dipende dal livello — 333
@@ -974,9 +1212,11 @@ function disegna(res) {
     $("box-cop").textContent =
       `· riferimento ${(cp.coperte / cp.totali * 100).toFixed(0)}% degli incroci`;
     $("box-cop").title =
-      `${cp.coperte} incroci osservati su ${cp.totali} interrogabili, con ` +
-      `${cp.n_vars} attributi nel constraint set. Il denominatore dipende dal ` +
-      `livello: i conteggi non sono confrontabili fra comuni, le percentuali si.`;
+      `${cp.coperte} incroci osservati su ${cp.totali} interrogabili.\n` +
+      `Constraint set a ${cp.n_vars} variabili: ${cp.vars.join(", ")}.\n\n` +
+      `Il denominatore dipende dal livello — 333 combinazioni con nove ` +
+      `attributi, 96 con sei — quindi i CONTEGGI non sono confrontabili fra ` +
+      `comuni, le PERCENTUALI si'.`;
   } else $("box-cop").hidden = true;
   pillole();
 }
@@ -1113,6 +1353,16 @@ document.addEventListener("click", async (e) => {
   if (!s.size) attivi.delete(attr);
   aggiorna();
 });
+$("btn-atlante").addEventListener("click", (e) => {
+  atlanteOn = !atlanteOn;
+  e.currentTarget.setAttribute("aria-pressed", String(atlanteOn));
+  $("zonaAtlante").hidden = !atlanteOn;
+  $("cartaComune").hidden = true;
+  scriviURL();
+  if (atlanteOn && INDICE) disegnaAtlante();
+});
+addEventListener("resize", () => { if (atlanteOn && INDICE) disegnaAtlante(); });
+
 $("btn-fiducia").addEventListener("click", async (e) => {
   fiduciaOn = !fiduciaOn;
   e.currentTarget.setAttribute("aria-pressed", String(fiduciaOn));
@@ -1161,6 +1411,7 @@ $("citta").addEventListener("change", (e) => {
     const r = await fetch(`${RADICE}/comuni.json`);
     if (!r.ok) throw 0;
     const ix = await r.json();
+    INDICE = ix;
     $("citta").innerHTML = ix.comuni.map((c) =>
       `<option value="${c.codice}"${c.codice === COMUNE ? " selected" : ""}>` +
       `${c.nome} — ${num(c.individui)}` +
@@ -1188,6 +1439,8 @@ $("citta").addEventListener("change", (e) => {
   $("btn-delta").setAttribute("aria-pressed", String(delta));
   $("btn-mappa").setAttribute("aria-pressed", String(mappaOn));
   $("btn-fiducia").setAttribute("aria-pressed", String(fiduciaOn));
+  $("btn-atlante").setAttribute("aria-pressed", String(atlanteOn));
+  $("zonaAtlante").hidden = !atlanteOn;
   $("zonaMappa").hidden = !mappaOn;
   $("zonaFiducia").hidden = !fiduciaOn;
   $("modo").value = modo;
@@ -1213,6 +1466,7 @@ $("citta").addEventListener("change", (e) => {
   }
   $("stato").hidden = false;
   $("legenda").hidden = false;
+  if (atlanteOn && INDICE) disegnaAtlante();
   await aggiorna();
 })();
 </script>
