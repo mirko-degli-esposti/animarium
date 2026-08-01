@@ -10,7 +10,7 @@ constraint set. La copertura del riferimento non e' identica fra citta' ma
 **fra livelli** (§3.4). Il tier fa degradare `paese` da C a D su cinque comuni
 (§2). Batteria della fiducia a quattordici voci (§4.7). `n_eff` misurato su
 undici comuni, con Castenaso come caso di contrasto (§2.1). `build_bundle.py`
-orchestra la costruzione (§8).*
+orchestra la costruzione (§8). Nuova §4.8, l'atlante regionale.*
 
 ---
 
@@ -336,11 +336,57 @@ dalle medie: dedurla dalle medie e appaiare poi quelle stesse medie come
 riferimento sarebbe circolare. I dati sono il controllo, e lo passano su
 cinque ancore (§13.5).
 
+### 4.8 Atlante regionale
+
+Una striscia opzionale sotto l'intestazione con gli undici comuni sulla
+mappa. Serve a navigare, ma soprattutto a **dire cosa non copriamo**: dieci
+capoluoghi emiliani e un comune da 16.357 abitanti, su un territorio che ne
+ha 328. L'assenza e' informazione quanto la presenza, e in una tabella non si
+vede.
+
+**Nessuna geometria esterna.** Le posizioni sono i **baricentri della
+popolazione**, calcolati da `build_indice.py` sui `lon`/`lat` degli individui.
+Per una mappa di navigazione e' anche piu' onesto del centroide territoriale:
+indica dove sta la gente, non dove passa il confine. La base cartografica e'
+quella scelta nel menu della mappa — `disegnaFondo` e' parametrizzata sulla
+vista e serve entrambe.
+
+**Area del cerchio proporzionale alla popolazione**, 4–17 px. La dimensione
+NON usa `n/n_eff`: sarebbe la scelta piu' interessante — Castenaso apparirebbe
+il piu' solido — ma e' criptica senza spiegazione, e una mappa deve essere
+leggibile prima che argomentativa. `n/n_eff` sta nella scheda, dove c'e' spazio
+per dirlo.
+
+**Repulsione invece di casi speciali.** Castenaso dista 10 km da Bologna e
+nella proiezione le cade sopra. I dischi che si sovrapporrebbero si scostano
+quel tanto che basta, e **una lineetta grigia li ricollega alla posizione
+vera**. Funziona per qualunque comune si aggiunga, e la nota sotto la mappa
+dichiara che lo spostamento c'e':
+
+> una mappa che sposta un punto senza dirlo e' peggio di una che si
+> sovrappone.
+
+**Brescia a margine, non esclusa.** Sta fuori dall'inquadratura regionale e
+compare come pastiglia tratteggiata nell'angolo, con l'etichetta «fuori
+regione». Escluderla sarebbe stato piu' semplice e sbagliato: e' **l'unica
+col pool AVQ lombardo**, quindi `n_eff` 5.655 contro i ~3.200 emiliani, ed e'
+il caso piu' diverso che il bundle contenga. Nasconderlo lo appiattirebbe.
+
+**Il clic apre una scheda** prima di cambiare citta': individui,
+articolazione, tier, copertura col suo denominatore, e la banda con
+`n/n_eff`, piu' una riga che traduce il numero — *«157.973 individui poggiano
+su 3.220 osservazioni efficaci»*. Poi il pulsante per entrare.
+
+E' anche mezzo «Confronta» (§4.5) arrivato in anticipo: due schede aperte in
+successione mettono a fianco Bologna e Castenaso senza costruire una vista
+nuova.
+
 ---
 
 ## 5. Interazione e stato
 
-Crossfilter completo; stato interamente nell'URL, fiducia e mappa incluse:
+Crossfilter completo; stato interamente nell'URL, atlante, fiducia e mappa
+inclusi:
 
 ```
 ?comune=017029&zona=17029012&istruzione=laurea_o_its&fiducia=1&mappa=1&modo=punti
