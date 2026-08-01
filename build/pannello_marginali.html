@@ -542,14 +542,21 @@ const ISTITUZIONI = {
   VOTOUSL:   "Giudizio sull'ASL",
 };
 
-/* FONTE DA CONFERMARE prima di stampare queste tacche in una figura.
-   Medie nazionali AVQ 2024 riportate nel documento di design fin dalla v0.1,
-   senza citazione. Se non si trova la fonte, vanno tolte: una tacca di
-   riferimento sbagliata sposta la lettura di ogni riga. */
-const NAZIONALI = {
-  PUNTIFI3: 6.70, PUNTIFI12: 8.10, PUNTIFI10: 5.13,
-  PUNTIFI8: 4.65, VOTOUSL: 6.34,
-};
+/* Medie nazionali: non piu' cablate, ma calcolate da medie_nazionali.py sui
+   microdati AVQ public use e lette da bundle/medie_nazionali.json.
+
+   Le cinque che stavano qui erano nel documento di riferimento senza
+   citazione, e cercandole si scopre che NON esistono in quella forma:
+   l'ISTAT pubblica percentuali di punteggi 6-10 e 8-10, non medie, e le
+   uniche medie pubblicate stanno nel BES, per quattro indicatori compositi
+   con forze dell'ordine e vigili del fuoco insieme.
+
+   Ricalcolate, coincidono entro 0,045 — quindi erano giuste — ma ora sono
+   verificate, riproducibili, coerenti col nostro universo (15 anni e piu'
+   invece dei 14 dell'ISTAT, che spiega lo scarto sistematico negativo), e
+   coprono TUTTE le variabili invece di cinque. */
+let NAZIONALI = {};      // popolato all'avvio da medie_nazionali.json
+let FONTE_NAZ = null;
 
 /* VOTOUSL non appartiene alla batteria: e' un giudizio su un servizio
    ricevuto, quindi con filtro per esperienza — la copertura cresce con
@@ -723,7 +730,9 @@ function disegnaFiducia(d) {
         : (s.copertura < COPERTURA_BASSA
            ? `<br><small>${pct(s.copertura)} del campione: modulo a rotazione` +
              `</small>` : "")}</span>
-      <span class="fasce" title="n=${num(s.n)} · donatori ${num(s.donatori)} · n_eff ${num(s.neff)}">
+      <span class="fasce" title="n=${num(s.n)} · donatori ${num(s.donatori)} · n_eff ${num(s.neff)}${
+        nz === undefined ? "" :
+        ` · Italia ${dec(nz)} · scarto ${s.media >= nz ? "+" : "−"}${dec(Math.abs(s.media - nz))}`}">
         ${griglia}
         <span class="naive" style="left:${px(Math.max(0, s.media - s.ciNaive))};
           width:${px(Math.min(10, s.media + s.ciNaive) - Math.max(0, s.media - s.ciNaive))}"></span>
@@ -745,7 +754,12 @@ function disegnaFiducia(d) {
       `piu' larga di quella ingenua.<br>` +
       `Fascia chiara e sottile: banda calcolata su <i>n</i>. ` +
       `Fascia scura e spessa: su <i>n_eff</i> di Kish, che e' quella vera. ` +
-      `Linea punteggiata: media nazionale, dove nota. ` +
+      (FONTE_NAZ
+      ? `Linea punteggiata: <b>media nazionale</b> — elaborazione propria sui ` +
+        `microdati AVQ ${FONTE_NAZ.anni.join(", ")}, pesata con COEFIN sullo ` +
+        `stesso universo (15 anni e piu'). <b>Non e' una cifra pubblicata ` +
+        `dall'ISTAT</b>, che diffonde percentuali e non medie. `
+      : `Medie nazionali assenti: esegui medie_nazionali.py. `) +
       `<b>Le AVQ non hanno informazione geografica</b> (assunzione 6): ` +
       `filtrando una zona, ogni differenza e' compositiva per costruzione.`
     : "nessun dato";
@@ -1249,11 +1263,13 @@ function comeCSV() {
   if (ultimoFid) {
     r.push([]);
     r.push(["istituzione", "n", "donatori", "n_eff", "media", "ci_onesta",
-            "ci_ingenua", "italia"]);
+            "ci_ingenua", "italia", "scarto_da_italia"]);
     for (const [v, s] of ultimoFid)
       r.push([ISTITUZIONI[v], s.n, s.donatori, Math.round(s.neff),
               dec(s.media), dec(s.ci), dec(s.ciNaive),
-              NAZIONALI[v] === undefined ? "" : dec(NAZIONALI[v])]);
+              NAZIONALI[v] === undefined ? "" : dec(NAZIONALI[v]),
+              NAZIONALI[v] === undefined ? ""
+                : dec(s.media - NAZIONALI[v])]);
   }
   return r.map((x) => x.map((c) =>
     /[";\n]/.test(String(c)) ? `"${c}"` : c).join(";")).join("\n");
@@ -1434,6 +1450,15 @@ $("citta").addEventListener("change", (e) => {
     const r = await fetch(BASE + "riferimenti.json");
     if (r.ok) RIF = await r.json();
   } catch (e) { /* si prosegue senza */ }
+
+  try {
+    const r = await fetch(`${RADICE}/medie_nazionali.json`);
+    if (r.ok) {
+      const mn = await r.json();
+      FONTE_NAZ = mn;
+      for (const v of mn.variabili) NAZIONALI[v.var] = v.media;
+    }
+  } catch (e) { /* le tacche non compariranno, e si vede */ }
 
   leggiURL();
   $("btn-delta").setAttribute("aria-pressed", String(delta));
