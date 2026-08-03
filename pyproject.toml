@@ -1,0 +1,15 @@
+[project]
+name = "animarium"
+version = "0.10.0"
+description = "Popolazioni sintetiche di città italiane — visualizzazione"
+requires-python = ">=3.11"
+dependencies = [
+    "gsp",          # NON su PyPI: pip install -e ~/progetti/gsp
+    "pandas",
+    "pyarrow",
+    "numpy",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
