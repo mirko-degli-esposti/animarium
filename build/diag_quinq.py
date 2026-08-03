@@ -52,7 +52,6 @@ OFFSET = {"M": 30, "F": 67}
 CAND_SEZ_ID = ["SEZ21_ID", "SEZ2021_ID", "SEZ21", "SEZ2021", "SEZIONE",
                "sezione", "sez21_id", "sez_id"]
 
-GSP_SCRIPTS = os.path.expanduser("~/progetti/gsp/scripts")
 
 
 # --------------------------------------------------------------------------
@@ -60,14 +59,12 @@ GSP_SCRIPTS = os.path.expanduser("~/progetti/gsp/scripts")
 # --------------------------------------------------------------------------
 
 def carica_gsp_common():
-    """Prova a importare gsp_common. Restituisce il modulo o None."""
-    if GSP_SCRIPTS not in sys.path:
-        sys.path.insert(0, GSP_SCRIPTS)
+    """Prova a importare gsp.common. Restituisce il modulo o None."""
     try:
-        import gsp_common as G  # type: ignore
+        import gsp.common as G  # type: ignore
         return G
     except Exception as e:
-        print(f"[avviso] gsp_common non importabile ({e}); "
+        print(f"[avviso] gsp.common non importabile ({e}); "
               f"servono --pop-file e --sezioni espliciti.")
         return None
 

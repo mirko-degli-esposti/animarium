@@ -64,7 +64,6 @@ MACROETA = {"0-8": "0-14", "9-14": "0-14", "15-24": "15-34", "25-34": "15-34",
 ISTR4 = {"nessun_titolo": 1, "elementare": 1, "media": 2, "diploma": 3,
          "laurea_o_its": 4, "post_laurea": 4}
 
-GSP_SCRIPTS = os.path.expanduser("~/progetti/gsp/scripts")
 
 
 def risolvi(comune, anno, pop_file):
@@ -72,14 +71,12 @@ def risolvi(comune, anno, pop_file):
         if not os.path.exists(pop_file):
             sys.exit(f"errore: file non trovato: {pop_file}")
         return pop_file
-    if GSP_SCRIPTS not in sys.path:
-        sys.path.insert(0, GSP_SCRIPTS)
     try:
-        import gsp_common as G  # type: ignore
+        import gsp.common as G  # type: ignore
         f = os.path.join(G.path_comune(comune), f"constraints_{anno}",
                          "popolazione_K9C_avq_full.csv")
     except Exception as e:
-        sys.exit(f"errore: gsp_common non importabile ({e}); usa --pop-file")
+        sys.exit(f"errore: gsp.common non importabile ({e}); usa --pop-file")
     if not os.path.exists(f):
         sys.exit(f"errore: file non trovato: {f}")
     return f

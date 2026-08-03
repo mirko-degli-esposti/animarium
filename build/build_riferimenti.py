@@ -56,7 +56,6 @@ GSP = os.path.expanduser("~/progetti/gsp/data/comuni")
 # le variabili sono sei e non nove — e il 20% di Bologna verrebbe confrontato
 # con un 8% di Ferrara che non significa niente, perche' 237 delle 333
 # combinazioni li' non esistono proprio.
-GSP_SCRIPTS = os.path.expanduser("~/progetti/gsp/scripts")
 
 
 def risolvi_cs(comune, anno):

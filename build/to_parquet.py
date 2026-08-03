@@ -80,19 +80,16 @@ BLOCCO_C = ["id", "indirizzo_fonte", "via", "civico", "lon", "lat"]
 
 STRINGHE = ["zona", "sezione", "civico"]
 
-GSP_SCRIPTS = os.path.expanduser("~/progetti/gsp/scripts")
 
 
 # --------------------------------------------------------------------------
 
 def carica_gsp():
-    if GSP_SCRIPTS not in sys.path:
-        sys.path.insert(0, GSP_SCRIPTS)
     try:
-        import gsp_common as G  # type: ignore
+        import gsp.common as G  # type: ignore
         return G
     except Exception as e:
-        sys.exit(f"errore: gsp_common non importabile ({e})")
+        sys.exit(f"errore: gsp.common non importabile ({e})")
 
 
 def risolvi(comune, anno, pop_file, out):

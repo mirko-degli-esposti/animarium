@@ -54,17 +54,14 @@ ORDINE_ISTR = list(SOGLIE.keys())
 
 ORDINE_ETA = ["0-8", "9-14", "15-24", "25-34", "35-49", "50-64", "65-74", "75+"]
 
-GSP_SCRIPTS = os.path.expanduser("~/progetti/gsp/scripts")
 
 
 def carica_gsp_common():
-    if GSP_SCRIPTS not in sys.path:
-        sys.path.insert(0, GSP_SCRIPTS)
     try:
-        import gsp_common as G  # type: ignore
+        import gsp.common as G  # type: ignore
         return G
     except Exception as e:
-        print(f"[avviso] gsp_common non importabile ({e}); serve --pop-file.")
+        print(f"[avviso] gsp.common non importabile ({e}); serve --pop-file.")
         return None
 
 

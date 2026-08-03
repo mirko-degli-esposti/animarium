@@ -55,7 +55,6 @@ import sys
 import numpy as np
 import pandas as pd
 
-GSP_SCRIPTS = os.path.expanduser("~/progetti/gsp/scripts")
 AVQ_DIR = os.path.expanduser("~/progetti/gsp/data/avq/anni")
 
 # fattore di grappolo familiare, da §13.3 del riferimento:
@@ -64,13 +63,11 @@ GRAPPOLO = 1.66
 
 
 def carica_gsp():
-    if GSP_SCRIPTS not in sys.path:
-        sys.path.insert(0, GSP_SCRIPTS)
     try:
-        import gsp_common as G  # type: ignore
+        import gsp.common as G  # type: ignore
         return G
     except Exception as e:
-        sys.exit(f"errore: gsp_common non importabile ({e})")
+        sys.exit(f"errore: gsp.common non importabile ({e})")
 
 
 def main():

@@ -50,17 +50,14 @@ import time
 
 QUI = os.path.dirname(os.path.abspath(__file__))
 RADICE = os.path.dirname(QUI)
-GSP_SCRIPTS = os.path.expanduser("~/progetti/gsp/scripts")
 
 
 def carica_gsp():
-    if GSP_SCRIPTS not in sys.path:
-        sys.path.insert(0, GSP_SCRIPTS)
     try:
-        import gsp_common as G  # type: ignore
+        import gsp.common as G  # type: ignore
         return G
     except Exception as e:
-        sys.exit(f"errore: gsp_common non importabile ({e})")
+        sys.exit(f"errore: gsp.common non importabile ({e})")
 
 
 def esegui(script, argomenti, silenzioso=True):

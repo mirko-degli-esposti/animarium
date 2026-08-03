@@ -163,7 +163,6 @@ ETICHETTE_MOD = {
     },
 }
 
-GSP_SCRIPTS = os.path.expanduser("~/progetti/gsp/scripts")
 
 # Etichetta del filtro spaziale: dipende dal comune, non e' sempre
 # "Quartiere". Brescia ha quartieri, Bologna zone, Ravenna aree, Reggio
@@ -173,13 +172,11 @@ ETICHETTA_LIVELLO = {"quartieri": "Quartiere", "zone": "Zona",
 
 
 def carica_gsp():
-    if GSP_SCRIPTS not in sys.path:
-        sys.path.insert(0, GSP_SCRIPTS)
     try:
-        import gsp_common as G  # type: ignore
+        import gsp.common as G  # type: ignore
         return G
     except Exception as e:
-        sys.exit(f"errore: gsp_common non importabile ({e})")
+        sys.exit(f"errore: gsp.common non importabile ({e})")
 
 
 def etichetta_default(v):

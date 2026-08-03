@@ -41,8 +41,7 @@ GSP = os.path.expanduser("~/progetti/gsp/data/comuni")
 
 # combinazioni logicamente impossibili, per nome.
 # (variabile A, valori A, variabile B, valori B, motivo)
-sys.path.insert(0, os.path.expanduser("~/progetti/gsp/scripts"))
-import gsp_common as G
+import gsp.common as G
 
 IMPOSSIBILI = G.IMPOSSIBILI
 
