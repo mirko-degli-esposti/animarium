@@ -58,7 +58,7 @@ CAND_SEZ_ID = ["SEZ21_ID", "SEZ2021_ID", "SEZ21", "SEZ2021", "SEZIONE",
 # risoluzione dei percorsi
 # --------------------------------------------------------------------------
 
-def carica_gsp_common():
+def carica_gsp():
     """Prova a importare gsp.common. Restituisce il modulo o None."""
     try:
         import gsp.common as G  # type: ignore
@@ -70,18 +70,18 @@ def carica_gsp_common():
 
 
 def risolvi_percorsi(comune, anno, pop_file, sezioni_file):
-    G = carica_gsp_common()
+    G = carica_gsp()
 
     if pop_file is None:
         if G is None:
-            sys.exit("errore: senza gsp_common serve --pop-file")
+            sys.exit("errore: senza gsp.common serve --pop-file")
         base = G.path_comune(comune)
         pop_file = os.path.join(base, f"constraints_{anno}",
                                 "popolazione_K9C_avq_full.csv")
 
     if sezioni_file is None:
         if G is None:
-            sys.exit("errore: senza gsp_common serve --sezioni")
+            sys.exit("errore: senza gsp.common serve --sezioni")
         try:
             sezioni_file = G.path_sezioni(comune)
         except TypeError:

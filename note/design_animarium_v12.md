@@ -698,6 +698,26 @@ bene come identificatore individuale. La soluzione definitiva e' la colonna
 `idx_don` scritta a monte da `assign_avq.py`, prevista per il prossimo ciclo
 di rigenerazione.
 
+**Perché la colonna sull'intera popolazione era rotta, e l'altra no**
+(misurato il 2/8/2026, con `donor_id` scritto a monte da assign_avq.py).
+
+Con l'identificatore vero, `n_eff` sull'intera popolazione quadruplica:
+862 → 3.741 a Modena, 741 → 3.205 a Castenaso, 1.093 → 6.618 a Brescia. E
+smette di essere erratico: Brescia sta al doppio degli altri due perché
+attinge al pool lombardo (8.111 contro 4.629), rapporto 1,77 contro il
+1,75 dei pool. Segue il pool regionale, esattamente come faceva già la
+colonna sull'universo della variabile.
+
+Sull'universo della variabile invece **non cambia nulla**: 3.220 → 3.227
+su Modena, +0,2%, e i donatori distinti su PUNTIFI10 sono 4.010 con la
+colonna contro 4.012 con la firma. Le collisioni stanno interamente fra i
+minori, che l'universo 15+ esclude per costruzione: la contaminazione non
+poteva arrivarci.
+
+Quindi la raccomandazione di §13.3 — `n_eff` per variabile, sul suo
+universo — non era solo più corretta statisticamente: era **immune al
+difetto dell'identificatore**. Nessuna banda pubblicata era sbagliata.
+
 ### 13.4 Constraint set e stato del pool → **riferimento §14**
 
 L'anatomia dei sedici blocchi, la distinzione fra cella *assente* e cella *a

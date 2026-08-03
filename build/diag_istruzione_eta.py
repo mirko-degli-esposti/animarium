@@ -56,7 +56,7 @@ ORDINE_ETA = ["0-8", "9-14", "15-24", "25-34", "35-49", "50-64", "65-74", "75+"]
 
 
 
-def carica_gsp_common():
+def carica_gsp():
     try:
         import gsp.common as G  # type: ignore
         return G
@@ -70,9 +70,9 @@ def risolvi_pop(comune, anno, pop_file):
         if not os.path.exists(pop_file):
             sys.exit(f"errore: file non trovato: {pop_file}")
         return pop_file
-    G = carica_gsp_common()
+    G = carica_gsp()
     if G is None:
-        sys.exit("errore: senza gsp_common serve --pop-file")
+        sys.exit("errore: senza gsp.common serve --pop-file")
     f = os.path.join(G.path_comune(comune), f"constraints_{anno}",
                      "popolazione_K9C_avq_full.csv")
     if not os.path.exists(f):

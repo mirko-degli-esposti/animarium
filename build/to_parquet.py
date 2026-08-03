@@ -40,7 +40,9 @@ Colonne aggiunte
     quinq   int8    classe quinquennale ISTAT (0..15), da eta_anni
 
 Ancora attese dalla pipeline (design §3.2):
-    donor_id, cella_avq, macroeta, istr4
+    cella_avq, macroeta, istr4
+`donor_id` arriva dalla pipeline dal 2/8/2026; se manca si ripiega sulla
+firma AVQ, che pero' collide sul 90% dei minori.
 
 Uso
 ---
@@ -62,7 +64,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-# Il set AVQ NON e' cablato qui: viene da gsp_common, che e' la sola fonte
+# Il set AVQ NON e' cablato qui: viene da gsp.common, che e' la sola fonte
 # di verita'. Cablarlo significa che aggiungere una variabile alla pipeline
 # non la fa comparire nel viewer, e nessuno se ne accorge — e' lo stesso
 # schema per cui FORZE_ARMATE era sfuggita alla lista di assign_avq.py.
@@ -159,7 +161,7 @@ def main():
                     help="mantieni l'ordine di colonne del CSV")
     ap.add_argument("--drop-avq-raw", action="store_true",
                     help="tieni solo le AVQ numeriche: le grezze sono "
-                         "ricostruibili da donor_anno (design §3.2)")
+                         "ricostruibili da donor_id (design §3.2)")
     args = ap.parse_args()
 
     global AVQ
@@ -199,15 +201,26 @@ def main():
             p[c + "_num"] = pd.to_numeric(p[c], errors="coerce").astype("float32")
         print(f"[info] aggiunte {len(presenti)} colonne AVQ numeriche")
 
-        firma = p[presenti].fillna("~").agg("|".join, axis=1)
-        n_firme = int(pd.factorize(firma)[0].max()) + 1
-        assert n_firme < 32000, f"troppe firme per int16: {n_firme}"
-        p["donor_id"] = pd.factorize(firma)[0].astype("int16")
+        # `donor_id` scritto a monte da assign_avq.py identifica il donatore
+        # esattamente. La firma a 23 valori invece COLLIDE: e' esatta per gli
+        # adulti ma il 90% dei minori ha 19-21 variabili mancanti e si
+        # distingue su due o tre valori (riferimento §13.3). Ripiego solo per
+        # le popolazioni generate prima del 2/8/2026.
+        if "donor_id" in p.columns:
+            chiave_don, fonte = p["donor_id"], "colonna scritta a monte"
+        else:
+            chiave_don = p[presenti].fillna("~").agg("|".join, axis=1)
+            fonte = "firma AVQ (collide sui minori)"
+        codici, _ = pd.factorize(chiave_don)
+        n_don = int(codici.max()) + 1
+        assert n_don < 2_000_000_000, f"troppi donatori per int32: {n_don}"
+        p["donor_id"] = codici.astype("int32")
         m = p["donor_id"].value_counts().to_numpy(dtype="float64")
-        print(f"[info] donor_id: {p['donor_id'].nunique():,} firme · "
-              f"riuso medio {m.mean():.1f} · "
+        print(f"[info] donor_id: {p['donor_id'].nunique():,} distinti · "
+              f"da {fonte} · riuso medio {m.mean():.1f} · "
               f"n_eff di Kish {m.sum() ** 2 / (m ** 2).sum():,.0f}"
               .replace(",", "."))
+        
 
         if args.drop_avq_raw:
             p = p.drop(columns=presenti)
