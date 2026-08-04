@@ -876,13 +876,51 @@ Chiunque abbia l'URL puo' scaricare `pop.parquet`. E' deliberato:
 - **il rischio e' di interpretazione**: qualcuno produce una mappa della
   sfiducia nel Comune via per via da un dataset che sulla sfiducia non ha
   *nessuna* informazione geografica. Su Caffaro non e' un'ipotesi di scuola;
-- ### Cosa fara' `--pubblico`
 
-Il banner del pannello dichiara gia' che «l'assegnazione di un individuo a un
-civico non porta informazione: il modello colloca le persone dentro la
-sezione in modo arbitrario». E' l'argomento corretto. Ma **il banner non
-viaggia con il file**: `pop.parquet` e' servito staticamente e chiunque puo'
-scaricarlo, con `via`, `civico`, `lon`, `lat` e le ventitre AVQ dentro.
+### Il regime pubblico, applicato
+
+Il banner del pannello dichiarava gia' che «l'assegnazione di un individuo
+a un civico non porta informazione: il modello colloca le persone dentro
+la sezione in modo arbitrario». Era l'argomento corretto, ma **il banner
+non viaggia con il file**: `pop.parquet` e' servito staticamente e
+chiunque puo' scaricarlo.
+
+Dal 4/8/2026 il divario e' chiuso nel dato invece che nell'avvertenza.
+`to_parquet.py` produce per **default** un Parquet in regime pubblico:
+
+- **`lon` e `lat` sono un punto casuale dentro la sezione**, non il
+  civico assegnato;
+- **`via`, `civico` e `indirizzo_fonte` non ci sono**: la scheda
+  individuo dice «Cittadella, sezione 034027001042» senza perdere nulla
+  di analitico;
+- **`quartiere` non c'e'**, essendo uno-a-uno con `zona` e gia' fornito
+  come etichetta dal manifest;
+- **`uid` non c'e'**: e' la chiave onomastica, e il viewer non mostra
+  nomi.
+
+**La randomizzazione non perde niente**, ed e' per questo che e' la
+scelta giusta invece di un compromesso: l'assegnazione al civico era gia'
+casuale dentro la sezione, quindi la coordinata non portava informazione
+oltre a «abita in questa sezione». La mappa resta visivamente identica,
+la densita' per sezione e' la stessa, e il file diventa **autoprotettivo**
+— «il punto e' casuale dentro la sezione» e' una frase che non ammette
+repliche, mentre «spostato di trenta metri» inviterebbe la domanda «e se
+fossero venti?».
+
+`--completo` tiene tutto, e serve alle diagnosi locali. E' un'**opzione**,
+non il default, perche' la scelta permissiva dev'essere un atto e non
+un'omissione: `--drop-avq-raw` ha insegnato che un flag che vive in un
+posto solo prima o poi si dimentica. Chi lo usa riceve un avviso a video
+che quel file non va pubblicato.
+
+I tre regimi — `pubblico`, `persona`, `narrativo` — sono definiti in
+`gsp.individui` (§7 di `note/fonti_e_pacchetto_v5.md`). Il Parquet e' il
+primo; il campione narrativo e i persona-prompt per un SIVE-like sono gli
+altri due, e vivono in Python: **il nome non sta in nessun file**, e'
+generato da `gsp.nomi` al momento del bisogno dalla chiave `uid`.
+
+La popolazione completa con i civici veri resta in `data/`, dove serve
+alla pipeline e a qualunque verifica.
 
 `--pubblico` chiude il divario:
 
