@@ -39,6 +39,13 @@ Colonne aggiunte
     id      int32   progressivo dopo l'ordinamento, per i permalink
     quinq   int8    classe quinquennale ISTAT (0..15), da eta_anni
 
+ Regime di disclosure
+--------------------
+Di default il Parquet e' PUBBLICO: niente via, civico, quartiere ne' uid,
+e coordinate casuali dentro la sezione. Con `--completo` si tiene tutto,
+ma quel file non va pubblicato. I tre regimi sono definiti in
+`gsp.individui` (§7 di note/fonti_e_pacchetto_v5.md).   
+
 Ancora attese dalla pipeline (design §3.2):
     cella_avq, macroeta, istr4
 `donor_id` arriva dalla pipeline dal 2/8/2026; se manca si ripiega sulla
@@ -162,6 +169,10 @@ def main():
     ap.add_argument("--drop-avq-raw", action="store_true",
                     help="tieni solo le AVQ numeriche: le grezze sono "
                          "ricostruibili da donor_id (design §3.2)")
+    ap.add_argument("--completo", action="store_true",
+                    help="tieni via, civico, quartiere e le coordinate "
+                         "esatte: SOLO per diagnosi locali, mai per il "
+                         "bundle pubblicato")
     args = ap.parse_args()
 
     global AVQ
@@ -233,6 +244,48 @@ def main():
     if "sezione" not in p.columns:
         sys.exit("errore: manca sezione")
     p["sezione"] = p["sezione"].astype("string").str.strip().str.zfill(12)
+
+    # --- regime pubblico (default) ----------------------------------------
+    # Il banner del pannello dichiara che «l'assegnazione di un individuo a
+    # un civico non porta informazione: il modello colloca le persone dentro
+    # la sezione in modo arbitrario». E' l'argomento corretto, ma IL BANNER
+    # NON VIAGGIA CON IL FILE: pop.parquet e' servito staticamente e
+    # chiunque puo' scaricarlo.
+    #
+    # Randomizzare NON perde niente, ed e' per questo che e' la scelta
+    # giusta: l'assegnazione al civico e' gia' casuale dentro la sezione,
+    # quindi la coordinata non porta informazione oltre a «abita in questa
+    # sezione». La mappa resta visivamente identica e la densita' per
+    # sezione e' la stessa — ma il dato diventa autoprotettivo.
+    #
+    # Default e non opzione: la scelta permissiva dev'essere un ATTO, non
+    # un'omissione. `--drop-avq-raw` ha insegnato che un flag che vive in un
+    # posto solo prima o poi si dimentica.
+    if not args.completo:
+        rng_pub = np.random.default_rng(20260804)
+        if {"lon", "lat"} <= set(p.columns):
+            for _, g in p.groupby("sezione"):
+                for c in ("lon", "lat"):
+                    v = pd.to_numeric(g[c], errors="coerce")
+                    lo, hi = float(v.min()), float(v.max())
+                    if np.isfinite(lo) and np.isfinite(hi) and hi > lo:
+                        p.loc[g.index, c] = rng_pub.uniform(
+                            lo, hi, len(g)).astype("float32")
+            print("[pubblico] coordinate randomizzate dentro la sezione")
+        # `via` e `civico` sono testo e servono solo alla scheda individuo,
+        # che puo' dire «Cittadella, sezione 034027001042» senza perdere
+        # nulla di analitico. `quartiere` e' uno-a-uno con `zona` (4 e 4 a
+        # Modena, 18 e 18 a Bologna) e il manifest lo fornisce gia' come
+        # etichetta. `uid` e' la chiave onomastica: non serve al viewer.
+        fuori = [c for c in ("via", "civico", "indirizzo_fonte",
+                             "quartiere", "uid") if c in p.columns]
+        if fuori:
+            p = p.drop(columns=fuori)
+            print(f"[pubblico] rimosse {len(fuori)} colonne: "
+                  f"{', '.join(fuori)}")
+    else:
+        print("[avviso] --completo: via, civico e coordinate ESATTE nel "
+              "file. Non pubblicarlo.")
 
     # --- ordinamento righe + id -------------------------------------------
     chiave = [c.strip() for c in args.sort.split(",") if c.strip()]
