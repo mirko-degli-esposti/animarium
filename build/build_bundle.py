@@ -44,6 +44,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -59,6 +60,32 @@ def carica_gsp():
     except Exception as e:
         sys.exit(f"errore: gsp.common non importabile ({e})")
 
+def copia_medie():
+    """`medie_nazionali.json` e' prodotto da GSP, non da qui.
+
+    Prima viveva in `build/` e scriveva direttamente nel bundle, il che
+    obbligava Animarium a lanciare codice che elabora microdati AVQ — non
+    e' il suo mestiere. Ora il confine e' netto: GSP produce, Animarium
+    consuma, come per le popolazioni. Lo script sta in
+    gsp/scripts/riferimenti/ e l'uscita e' una fonte del registro
+    (`avq_medie_nazionali`, derivata da `avq_microdati`).
+    """
+    src = os.path.expanduser(
+        "~/progetti/gsp/fonti/derivati/medie_nazionali.json")
+    dst = os.path.join(RADICE, "bundle", "medie_nazionali.json")
+    if not os.path.exists(src):
+        print(f"[avviso] {src} assente:")
+        print( "         le tacche delle medie nazionali non compariranno.")
+        print( "         Generarlo in GSP con")
+        print( "           python scripts/riferimenti/medie_nazionali.py")
+        return False
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    if os.path.exists(dst) and os.path.getmtime(dst) >= os.path.getmtime(src):
+        print("[bundle] medie_nazionali.json gia' aggiornato")
+        return True
+    shutil.copy2(src, dst)          # copy2 conserva l'mtime: il confronto
+    print("[bundle] medie_nazionali.json copiato da GSP")   # sopra regge
+    return True
 
 def esegui(script, argomenti, silenzioso=True):
     """Esegue uno script di build. Restituisce (ok, output)."""
@@ -110,7 +137,9 @@ def main():
 
     G = carica_gsp()
     comuni = args.comuni or sorted(G.COMUNI)
+    
     print(f"[bundle] {len(comuni)} comuni · anno {args.anno} · radice {RADICE}")
+    copia_medie()
     print()
 
     esiti = []

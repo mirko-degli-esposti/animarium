@@ -97,13 +97,14 @@ def main():
         shutil.copy("build/smoke_duckdb.html", os.path.join(out, "smoke.html"))
     shutil.copytree(bundle, os.path.join(out, "bundle"))
 
-    # medie_nazionali.json sta nella radice del bundle e viene copiato con
-    # esso; se manca, il pannello non mostra le tacche di riferimento e lo
+    # medie_nazionali.jsonsta arriva da build_bundle
+    # ; se manca, il pannello non mostra le tacche di riferimento e lo
     # dichiara invece di tacere.
     if not os.path.exists(os.path.join(out, "bundle", "medie_nazionali.json")):
         print("[avviso] manca bundle/medie_nazionali.json: le tacche delle "
               "medie nazionali non compariranno")
-        print("         python build/medie_nazionali.py")
+        print("         lo copia build_bundle.py da "
+              "~/progetti/gsp/fonti/derivati/")
     open(os.path.join(out, ".nojekyll"), "w").close()
 
     # --- inventario -------------------------------------------------------
