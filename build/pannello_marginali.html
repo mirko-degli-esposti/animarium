@@ -121,6 +121,37 @@
   #scheda .chiudi { position: absolute; top: .45rem; right: .55rem;
             cursor: pointer; color: var(--tenue); font-weight: 700; }
 
+  /* --- nuclei familiari --- */
+  #zonaNuclei { padding: 1.2rem 1.5rem 0; }
+  #zonaNuclei h2 { font: 600 13px/1.2 inherit; margin: 0 0 .1rem;
+            text-transform: uppercase; letter-spacing: .05em; }
+  #zonaNuclei .nota { color: var(--tenue); font-size: 11.5px;
+            margin-bottom: .7rem; }
+  .nuc-griglia { display: grid; gap: 1.5rem 2rem;
+            grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+  .nuc-blocco h3 { font: 600 12px/1.2 inherit; margin: 0 0 .1rem;
+            text-transform: uppercase; letter-spacing: .04em; }
+  .nuc-blocco .sotto { color: var(--tenue); font-size: 11px;
+            margin-bottom: .5rem; }
+  .nuc-cifre { display: grid; grid-template-columns: 1fr auto;
+            gap: .12rem .6rem; font-size: 12.5px; }
+  .nuc-cifre b { font: 600 12.5px ui-monospace, monospace;
+            font-variant-numeric: tabular-nums; }
+  .nuc-cifre em { font-style: normal; color: var(--tenue); }
+  #schedaNucleo { margin-top: 1rem; border: 1px solid var(--inchiostro);
+            border-radius: 3px; padding: .75rem .9rem; font-size: 12.5px;
+            background: var(--sfondo); position: relative; }
+  #schedaNucleo .tit { font: 600 13px ui-monospace, monospace;
+            margin-bottom: .1rem; }
+  #schedaNucleo table { border-collapse: collapse; margin-top: .5rem;
+            font-size: 12px; }
+  #schedaNucleo td { padding: .12rem .55rem .12rem 0; white-space: nowrap; }
+  #schedaNucleo td.ruolo { font: 600 12px ui-monospace, monospace;
+            color: var(--accento); }
+  #schedaNucleo .avv { background: #f3ece2; border: 1px solid #d8c9b4;
+            padding: .3rem .5rem; border-radius: 2px; margin-top: .5rem;
+            font-size: 11.5px; }
+
   /* --- fiducia istituzionale --- */
   #zonaFiducia { padding: 1.2rem 1.5rem 0; }
   #zonaFiducia h2 { font: 600 13px/1.2 inherit; margin: 0 0 .1rem;
@@ -226,6 +257,7 @@
   <span id="pillole"></span>
   <span class="attrezzi">
     <button class="az" id="btn-atlante" aria-pressed="false">atlante</button>
+    <button class="az" id="btn-nuclei" aria-pressed="false">nuclei</button>
     <button class="az" id="btn-fiducia" aria-pressed="false">fiducia</button>
     <button class="az" id="btn-mappa" aria-pressed="false">mappa</button>
     <button class="az" id="btn-delta" aria-pressed="false">scarti Δ</button>
@@ -248,6 +280,13 @@
   <canvas id="atlante"></canvas>
   <div class="atl-nota" id="atlNota"></div>
   <div id="cartaComune" hidden></div>
+</div>
+
+<div id="zonaNuclei" hidden>
+  <h2>Nuclei familiari</h2>
+  <div class="nota" id="nucNota"></div>
+  <div class="nuc-griglia" id="nucGriglia"></div>
+  <div id="schedaNucleo" hidden></div>
 </div>
 
 <div id="zonaFiducia" hidden>
@@ -325,6 +364,7 @@ let mappaOn = false, modo = "quota", geo = null, baseXY = null, hit = null;
 let vista = null, ultimoDati = null, ultimaQuota = 0;
 let fiduciaOn = false, ordineFid = null, ultimoFid = null;
 let atlanteOn = false, INDICE = null, hitAtl = null, vistaAtl = null;
+let nucleiOn = false, RIF_NUC = null, ultimoNuc = null;
 
 function avviso(cls, html) {
   const d = document.createElement("div");
@@ -516,6 +556,261 @@ document.addEventListener("click", (e) => {
   if (v) location.search = "?comune=" + v.dataset.vai;
 });
 
+
+/* ---------- nuclei familiari ------------------------------------------ */
+/* L'anello 4: `nucleo` e' il progressivo DENTRO la sezione, `ruolo` una
+   lettera. Un nucleo e' identificato dalla COPPIA (sezione, nucleo) —
+   contare i progressivi distinti da' 367 invece di 85.249.
+
+   `nucleo = -1` non e' un dato mancante: e' popolazione in convivenza
+   anagrafica (case di riposo, studentati, caserme), dedotta dal residuo dei
+   vincoli censuari. Va mostrata come categoria, non nascosta. */
+
+const RUOLI = { R: "riferimento", P: "partner", F: "figlio",
+                G: "genitore", A: "altro parente", N: "non parente" };
+
+/* Tipologia dalla firma dei ruoli ordinati. Il repertorio AVQ da cui le
+   configurazioni sono estratte e' emiliano-lombardo e NON comunale: questa
+   distribuzione e' modello, e non ha riferimento censuario. */
+function tipologia(firma) {
+  const n = firma.length;
+  const c = (x) => (firma.match(new RegExp(x, "g")) || []).length;
+  if (n === 1) return "Unipersonale";
+  if (c("P") && c("F")) return "Coppia con figli";
+  if (c("P")) return "Coppia senza figli";
+  if (c("F")) return "Monogenitore";
+  return "Altra convivenza familiare";
+}
+
+async function datiNuclei() {
+  const pr = predicato(null);
+  const dove = pr ? `WHERE ${pr}` : "";
+  const [amp, extra, conv] = await Promise.all([
+    /* ampiezza e firma per nucleo, una riga per nucleo */
+    conn.query(`
+      SELECT ampiezza, count(*) AS nuclei, sum(minori) AS con_minori,
+             sum(anziani) AS con_anziani, sum(stranieri) AS con_stranieri,
+             sum(eta_media) AS somma_eta
+      FROM (SELECT sezione, nucleo, count(*) AS ampiezza,
+                   max(CASE WHEN eta_anni < 18 THEN 1 ELSE 0 END) AS minori,
+                   max(CASE WHEN eta_anni >= 75 THEN 1 ELSE 0 END) AS anziani,
+                   max(CASE WHEN CAST(cittadinanza AS VARCHAR) = 'FRG'
+                            THEN 1 ELSE 0 END) AS stranieri,
+                   avg(eta_anni) AS eta_media
+            FROM 'pop.parquet' ${dove}${dove ? " AND" : "WHERE"} nucleo >= 0
+            GROUP BY sezione, nucleo)
+      GROUP BY ampiezza ORDER BY ampiezza`),
+    /* firma dei ruoli: string_agg ordinato da' RPFF */
+    conn.query(`
+      SELECT firma, count(*) AS nuclei FROM (
+        SELECT sezione, nucleo,
+               /* ordine GERARCHICO, non alfabetico: la firma dev'essere
+                  RPFF come nelle note, non FFPR. */
+               string_agg(CAST(ruolo AS VARCHAR), '' ORDER BY
+                 CASE CAST(ruolo AS VARCHAR)
+                   WHEN 'R' THEN 0 WHEN 'P' THEN 1 WHEN 'F' THEN 2
+                   WHEN 'G' THEN 3 WHEN 'A' THEN 4 ELSE 5 END) AS firma
+        FROM 'pop.parquet' ${dove}${dove ? " AND" : "WHERE"} nucleo >= 0
+        GROUP BY sezione, nucleo)
+      GROUP BY firma ORDER BY nuclei DESC`),
+    conn.query(`
+      SELECT count(*) FILTER (WHERE nucleo < 0) AS conviv,
+             count(*) AS tot FROM 'pop.parquet' ${dove}`),
+  ]);
+
+  const per = [];
+  let nuclei = 0, individui = 0, minori = 0, anziani = 0, stranieri = 0;
+  for (const x of amp) {
+    const a = Number(x.ampiezza), n = Number(x.nuclei);
+    per.push({ a, n, minori: Number(x.con_minori),
+               anziani: Number(x.con_anziani),
+               stranieri: Number(x.con_stranieri) });
+    nuclei += n; individui += a * n;
+    minori += Number(x.con_minori); anziani += Number(x.con_anziani);
+    stranieri += Number(x.con_stranieri);
+  }
+  const tip = new Map();
+  for (const x of extra) {
+    const t = tipologia(String(x.firma));
+    tip.set(t, (tip.get(t) || 0) + Number(x.nuclei));
+  }
+  const c = conv.get(0);
+  return { per, nuclei, individui, minori, anziani, stranieri,
+           tipologie: [...tip.entries()].sort((a, b) => b[1] - a[1]),
+           conviv: Number(c.conviv), tot: Number(c.tot) };
+}
+
+function barre(righe, scala, rif) {
+  return righe.map(([et, v, r]) => {
+    const w = (v / scala * 100).toFixed(2);
+    const xr = r === undefined || r === null ? null
+      : (r / scala * 100).toFixed(2);
+    return `<div class="riga" style="cursor:default">
+      <span class="et">${et}</span>
+      <span class="traccia"><i style="width:${w}%"></i>` +
+      (xr === null ? "" : `<span class="rif" style="left:${xr}%"></span>`) +
+      `</span><span class="val">${num(v)}</span></div>`;
+  }).join("");
+}
+
+function disegnaNuclei(d) {
+  const g = $("nucGriglia");
+  const AMAX = 6;
+  const rifTot = RIF_NUC && RIF_NUC.totale;
+  const senzaFiltro = d.tot === manifest.comune.individui;
+
+  /* 1. ampiezza — l'unico blocco con riferimento censuario */
+  const amp = [];
+  for (let k = 1; k <= AMAX; k++) {
+    const v = d.per.filter((x) => (k === AMAX ? x.a >= AMAX : x.a === k))
+                   .reduce((s, x) => s + x.n, 0);
+    amp.push([k === AMAX ? `${k}+ componenti`
+                         : `${k} component${k === 1 ? "e" : "i"}`, v,
+              (rifTot && senzaFiltro) ? rifTot[String(k)] : null]);
+  }
+  const scalaA = Math.max(...amp.map((x) => Math.max(x[1], x[2] || 0))) * 1.05;
+
+  /* 2. tipologia — nessun riferimento */
+  const scalaT = Math.max(...d.tipologie.map((x) => x[1])) * 1.05;
+
+  const media = d.nuclei ? d.individui / d.nuclei : 0;
+  const soli = d.per.find((x) => x.a === 1);
+
+  g.innerHTML = `
+    <section class="nuc-blocco">
+      <h3>Famiglie per ampiezza</h3>
+      <div class="sotto">${rifTot && senzaFiltro
+        ? "rombo: censimento 2023 (PF3–PF8). E' <b>lo stesso vincolo</b> da "
+          + "cui i nuclei sono costruiti: lo scarto misura l'attrito fra "
+          + "vincolo e popolazione, non l'errore del modello"
+        : "nessun riferimento censuario per questo filtro"}</div>
+      ${barre(amp, scalaA)}
+    </section>
+
+    <section class="nuc-blocco">
+      <h3>Tipologia familiare</h3>
+      <div class="sotto"><b>Nessun riferimento censuario.</b> Le
+        configurazioni interne vengono dal repertorio AVQ, che e'
+        emiliano-lombardo e non comunale: questa e' una distribuzione di
+        modello, non un dato osservato del comune.</div>
+      ${barre(d.tipologie.map(([t, n]) => [t, n]), scalaT)}
+    </section>
+
+    <section class="nuc-blocco">
+      <h3>In cifre</h3>
+      <div class="sotto">le percentuali di famiglie e quelle di persone
+        rispondono a domande diverse</div>
+      <div class="nuc-cifre">
+        <em>famiglie</em><b>${num(d.nuclei)}</b>
+        <em>ampiezza media</em><b>${dec(media)}</b>
+        <em>famiglie unipersonali</em><b>${pct(soli ? soli.n / d.nuclei : 0)}</b>
+        <em>persone che vivono sole</em><b>${pct(soli ? soli.n / d.tot : 0)}</b>
+        <em>famiglie con minori</em><b>${pct(d.minori / d.nuclei)}</b>
+        <em>famiglie con ultra75enni</em><b>${pct(d.anziani / d.nuclei)}</b>
+        <em>famiglie con almeno uno straniero</em><b>${pct(d.stranieri / d.nuclei)}</b>
+        <em>persone in convivenza</em><b>${pct(d.conviv / d.tot)}</b>
+      </div>
+    </section>`;
+
+  $("nucNota").innerHTML =
+    `<b>${num(d.nuclei)} famiglie</b> · ${num(d.conviv)} persone in ` +
+    `<b>convivenza anagrafica</b> (case di riposo, studentati, caserme): ` +
+    `non hanno nucleo, e non e' un dato mancante ma il residuo dei vincoli ` +
+    `censuari. · <a data-nucleo-a-caso style="cursor:pointer;` +
+    `text-decoration:underline">mostrami una famiglia a caso</a>`;
+}
+
+/* --- scheda di nucleo ------------------------------------------------- */
+async function schedaNucleo() {
+  const pr = predicato(null);
+  const dove = pr ? `WHERE ${pr} AND` : "WHERE";
+  const s = $("schedaNucleo");
+  s.hidden = false;
+  s.innerHTML = "estrazione…";
+  try {
+    const q = await conn.query(`
+      SELECT sezione, nucleo FROM 'pop.parquet' ${dove} nucleo >= 0
+      USING SAMPLE 1 ROWS`);
+    if (!q.numRows) { s.innerHTML = "nessuna famiglia col filtro attivo"; return; }
+    const sez = String(q.get(0).sezione), nuc = Number(q.get(0).nucleo);
+    const m = await conn.query(`
+      SELECT * FROM 'pop.parquet'
+      WHERE sezione = '${esc(sez)}' AND nucleo = ${nuc}
+      ORDER BY CASE CAST(ruolo AS VARCHAR)
+        WHEN 'R' THEN 0 WHEN 'P' THEN 1 WHEN 'F' THEN 2
+        WHEN 'G' THEN 3 WHEN 'A' THEN 4 ELSE 5 END, eta_anni DESC`);
+    const righe = [];
+    for (const x of m) righe.push(x);
+    const firma = righe.map((x) => String(x.ruolo)).join("");
+    const eta = righe.map((x) => Number(x.eta_anni));
+
+    /* i divari d'eta' mostrano il vincolo all'opera: il generazionale ha
+       limiti convenzionali 20-40 anni, quello fra partner ±15 */
+    const rif = righe.find((x) => String(x.ruolo) === "R");
+    const divari = righe.filter((x) => x !== rif).map((x) => {
+      const d = Number(rif.eta_anni) - Number(x.eta_anni);
+      return `${RUOLI[String(x.ruolo)] || x.ruolo} ${d >= 0 ? "+" : "−"}${Math.abs(d)}`;
+    });
+
+    const coniugati = righe.filter(
+      (x) => String(x.stato_civile) === "coniugato_unito");
+    const inCoppia = coniugati.filter(
+      (x) => "RP".includes(String(x.ruolo))).length;
+    const spaiati = coniugati.length - inCoppia;
+
+    s.innerHTML =
+      `<span class="chiudi" data-chiudi-nucleo style="position:absolute;` +
+      `top:.4rem;right:.55rem;cursor:pointer;color:var(--tenue);` +
+      `font-weight:700">×</span>` +
+      `<div class="tit">${sez}-${String(nuc).padStart(6, "0")}</div>` +
+      `<div class="sotto">ampiezza ${righe.length} · firma <b>${firma}</b> · ` +
+      `${tipologia(firma)}${righe[0].zona
+        ? " · " + etichettaMod("zona", String(righe[0].zona)) : ""}</div>` +
+      `<table>${righe.map((x) => `<tr>` +
+        `<td class="ruolo">${String(x.ruolo)}</td>` +
+        `<td>${String(x.sesso) === "F" ? "F" : "M"}</td>` +
+        `<td>${x.eta_anni} anni</td>` +
+        `<td>${etichettaMod("stato_civile", String(x.stato_civile))}</td>` +
+        `<td>${etichettaMod("cittadinanza", String(x.cittadinanza))}</td>` +
+        `<td>${etichettaMod("istruzione", String(x.istruzione))}</td>` +
+        `<td>${etichettaMod("condizione", String(x.condizione))}</td>` +
+        `</tr>`).join("")}</table>` +
+      (divari.length ? `<div class="sotto" style="margin-top:.4rem">divari ` +
+        `dal riferimento: ${divari.join(" · ")}</div>` : "") +
+      (spaiati ? `<div class="avv"><b>${spaiati} coniugat${spaiati > 1
+        ? "i" : "o"} senza coniuge nel nucleo.</b> Non e' un difetto
+        dell'assemblaggio: il constraint set non impone che i coniugati
+        siano in numero pari dentro una sezione, quindi in molte sezioni
+        restano spaiati. L'anello 4 rivela un'incoerenza gia' presente
+        nell'anello 1, non la crea — e nella realta' un coniuge che vive
+        altrove esiste.</div>` : "") +
+      `<div class="sotto" style="margin-top:.5rem">` +
+      `<b>■ vincolato</b> sesso, eta', stato civile, istruzione, ` +
+      `cittadinanza — dal censimento · <b>◧ derivato</b> il ruolo e la ` +
+      `firma, dal repertorio AVQ. La scheda si legge come una famiglia, ` +
+      `ma le due meta' non hanno lo stesso statuto.</div>`;
+  } catch (e) { s.innerHTML = "errore: " + e; }
+}
+
+async function aggiornaNuclei() {
+  if (!nucleiOn) return;
+  $("nucNota").textContent = "calcolo…";
+  try { ultimoNuc = await datiNuclei(); disegnaNuclei(ultimoNuc); }
+  catch (e) {
+    $("nucGriglia").innerHTML = "";
+    $("nucNota").innerHTML =
+      `<b>Nuclei non disponibili per questo comune.</b> Il Parquet non ha ` +
+      `le colonne <code>nucleo</code> e <code>ruolo</code>: rigenerare con ` +
+      `<code>to_parquet.py</code> (l'anello 4 e' incluso per default).` +
+      `<br><span style="opacity:.6">${e}</span>`;
+  }
+}
+
+document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-nucleo-a-caso]")) schedaNucleo();
+  if (e.target.closest("[data-chiudi-nucleo]")) $("schedaNucleo").hidden = true;
+});
+
 /* ---------- fiducia istituzionale: costanti --------------------------- */
 /* Corrispondenza dal codebook AVQ. Il tracciato pubblicato salta il 9 e
    l'11: una delle due e' FORZE_ARMATE, che compare col nome dell'istituzione
@@ -571,6 +866,37 @@ const A_PARTE = new Set(["VOTOUSL"]);
    diventa larghissima — corretto, ma va spiegato. */
 const COPERTURA_BASSA = 0.30;
 
+/* Quante variabili AVQ ha il set: contata dal Parquet invece che cablata,
+   cosi' aggiungerne una alla pipeline non lascia un numero sbagliato qui.
+   Era 21 e sono 23 da quando il registro e' la sola fonte. */
+let N_AVQ = 23;
+
+/* Forme concordate al sesso, per la frase soltanto. Le etichette del
+   manifest restano neutre — «Vedovo/a», «Occupato/a» — perche' nei pannelli
+   descrivono una MODALITA', non una persona. E' la distinzione di §3.1 del
+   piano di trattamento: lo stesso valore che in un profilo statistico e'
+   corretto, in una scheda che si legge come una persona suona burocratico. */
+const CONCORDA = {
+  stato_civile: {
+    celibe_nubile:      ["celibe", "nubile"],
+    coniugato_unito:    ["coniugato", "coniugata"],
+    divorziato_sciolto: ["divorziato", "divorziata"],
+    vedovo:             ["vedovo", "vedova"],
+  },
+  condizione: {
+    occupato:            ["occupato", "occupata"],
+    in_cerca:            ["in cerca di occupazione", "in cerca di occupazione"],
+    studente:            ["studente", "studentessa"],
+    casalinga:           ["casalingo", "casalinga"],
+    percettore_pensioni: ["pensionato", "pensionata"],
+    altra_condizione:    ["in altra condizione", "in altra condizione"],
+  },
+};
+const concorda = (attr, v, sesso) => {
+  const c = CONCORDA[attr] && CONCORDA[attr][v];
+  return c ? c[sesso === "F" ? 1 : 0] : null;
+};
+
 /* ---------- URL -------------------------------------------------------- */
 function leggiURL() {
   attivi = new Map();
@@ -582,6 +908,7 @@ function leggiURL() {
   mappaOn = P.get("mappa") === "1";
   fiduciaOn = P.get("fiducia") === "1";
   atlanteOn = P.get("atlante") === "1";
+  nucleiOn = P.get("nuclei") === "1";
   modo = P.get("modo") === "punti" ? "punti" : "quota";
 }
 function scriviURL() {
@@ -591,6 +918,7 @@ function scriviURL() {
   if (delta) p.set("delta", "1");
   if (fiduciaOn) p.set("fiducia", "1");
   if (atlanteOn) p.set("atlante", "1");
+  if (nucleiOn) p.set("nuclei", "1");
   if (mappaOn) { p.set("mappa", "1"); p.set("modo", modo); }
   history.replaceState(null, "", "?" + p.toString());
 }
@@ -1062,11 +1390,15 @@ async function apriScheda(id) {
     });
     if (righe.length) html += `<h3>${tit}</h3>` + righe.join("");
   }
-  const avq = Object.keys(row).filter((k) => k.endsWith("_num"))
+  const tutteAvq = Object.keys(row).filter((k) => k.endsWith("_num"));
+  if (tutteAvq.length) N_AVQ = tutteAvq.length;
+  const avq = tutteAvq
     .filter((k) => row[k] !== null && !Number.isNaN(Number(row[k])));
   if (avq.length) {
-    html += `<h3>AVQ — donato (${avq.length} su 21` +
-      (val("donor_id") ? `, firma ${val("donor_id")}` : "") + `)</h3>` +
+    /* `donor_id` non e' piu' una firma ricostruita dalla 21-upla ma
+       l'identificatore VERO del rispondente, scritto dalla pipeline. */
+    html += `<h3>AVQ — donato (${avq.length} su ${N_AVQ}` +
+      (val("donor_id") ? `, donatore ${val("donor_id")}` : "") + `)</h3>` +
       avq.map((k) => {
         const v = Number(row[k]);
         const et = ISTITUZIONI[k.replace("_num", "")] || k.replace("_num", "");
@@ -1075,25 +1407,34 @@ async function apriScheda(id) {
           `<b>${Number.isInteger(v) ? v : v.toFixed(1)}</b></div>`;
       }).join("");
   }
-  html += `<div class="persona">${persona(row, val)}</div>`;
+  html += `<div class="persona">${persona(row, val)}</div>` +
+    `<div class="atl-nota" style="margin-top:.5rem">Nessun indirizzo: il ` +
+    `punto sulla mappa e' casuale dentro la sezione, che e' la risoluzione ` +
+    `a cui il dato si ferma.</div>`;
   s.innerHTML = html;
 }
 function persona(row, val) {
   const p = [];
-  const g = val("sesso") === "F" ? "Donna" : "Uomo";
+  const sx = val("sesso");
+  const g = sx === "F" ? "Donna" : "Uomo";
+  const et = (a) => concorda(a, val(a), sx)
+    || (val(a) ? etichettaMod(a, val(a)).toLowerCase() : null);
   p.push(`${g}${val("eta_anni") ? ` di ${val("eta_anni")} anni` : ""}` +
-    (val("stato_civile")
-      ? `, ${etichettaMod("stato_civile", val("stato_civile")).toLowerCase()}` : "") + ".");
+    (val("stato_civile") ? `, ${et("stato_civile")}` : "") + ".");
   if (val("istruzione"))
     p.push(`${etichettaMod("istruzione", val("istruzione"))}` +
-      (val("condizione")
-        ? `, ${etichettaMod("condizione", val("condizione")).toLowerCase()}` : "") + ".");
+      (val("condizione") ? `, ${et("condizione")}` : "") + ".");
   if (val("paese") && val("paese") !== "Italia")
     p.push(`Cittadinanza ${val("paese")}.`);
+  /* L'indirizzo non e' nel bundle: il regime pubblico lo toglie. La zona
+     pero' c'e' e ha un nome leggibile — ed e' anche la risoluzione a cui il
+     dato dice davvero qualcosa, quindi la frase guadagna in onesta' quel
+     che perde in dettaglio. */
   const dove = [val("via"), val("civico")].filter(Boolean).join(" ");
-  if (dove || val("quartiere"))
-    p.push(`Abita${dove ? ` in ${dove}` : ""}` +
-      (val("quartiere") ? `, ${val("quartiere")}` : "") + ".");
+  const zn = val("quartiere")
+    || (val("zona") ? etichettaMod("zona", val("zona")) : null);
+  if (dove || zn)
+    p.push(dove ? `Abita in ${dove}${zn ? `, ${zn}` : ""}.` : `Abita a ${zn}.`);
   const f = row["PUNTIFI10_num"];
   if (f !== null && f !== undefined && !Number.isNaN(Number(f)))
     p.push(`Valuta ${Number(f)} su 10 la fiducia nel governo comunale.`);
@@ -1345,6 +1686,7 @@ async function aggiorna() {
   const res = await marginali();
   disegna(res);
   await Promise.all([
+    aggiornaNuclei(),
     aggiornaFiducia(),
     aggiornaMappa(res.n / manifest.comune.individui),
   ]);
@@ -1376,6 +1718,15 @@ $("btn-atlante").addEventListener("click", (e) => {
   if (atlanteOn && INDICE) disegnaAtlante();
 });
 addEventListener("resize", () => { if (atlanteOn && INDICE) disegnaAtlante(); });
+
+$("btn-nuclei").addEventListener("click", async (e) => {
+  nucleiOn = !nucleiOn;
+  e.currentTarget.setAttribute("aria-pressed", String(nucleiOn));
+  $("zonaNuclei").hidden = !nucleiOn;
+  $("schedaNucleo").hidden = true;
+  scriviURL();
+  if (nucleiOn) await aggiornaNuclei();
+});
 
 $("btn-fiducia").addEventListener("click", async (e) => {
   fiduciaOn = !fiduciaOn;
@@ -1450,6 +1801,11 @@ $("citta").addEventListener("change", (e) => {
   } catch (e) { /* si prosegue senza */ }
 
   try {
+    const r = await fetch(BASE + "rif_nuclei.json");
+    if (r.ok) RIF_NUC = await r.json();
+  } catch (e) { /* il blocco ampiezza restera' senza rombo, e lo dice */ }
+
+  try {
     const r = await fetch(`${RADICE}/medie_nazionali.json`);
     if (r.ok) {
       const mn = await r.json();
@@ -1463,6 +1819,8 @@ $("citta").addEventListener("change", (e) => {
   $("btn-mappa").setAttribute("aria-pressed", String(mappaOn));
   $("btn-fiducia").setAttribute("aria-pressed", String(fiduciaOn));
   $("btn-atlante").setAttribute("aria-pressed", String(atlanteOn));
+  $("btn-nuclei").setAttribute("aria-pressed", String(nucleiOn));
+  $("zonaNuclei").hidden = !nucleiOn;
   $("zonaAtlante").hidden = !atlanteOn;
   $("zonaMappa").hidden = !mappaOn;
   $("zonaFiducia").hidden = !fiduciaOn;

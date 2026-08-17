@@ -1,7 +1,18 @@
 # Animarium — documento di design
 
 **Synthetic populations of Italian cities**
-**v0.13 — 4 agosto 2026**
+**v0.15 — 15 agosto 2026**
+
+*v0.15: nuclei familiari nel bundle e nel pannello (§4.9). `nucleo` e' il
+progressivo dentro la sezione, non l'id per esteso: 0,17 MB invece di 4.
+Riferimento `PF3`–`PF8` da `build_rif_nuclei.py`, con lo scarto che misura
+l'attrito fra vincolo e popolazione — non l'errore del modello.*
+
+*v0.14: il regime pubblico e' **applicato**, non piu' solo deciso —
+`to_parquet` legge da `gsp.individui.esporta_pubblico` (§15). Etichette di
+`zona` dal registro invece che dalla colonna `quartiere`, che il regime
+toglie. `donor_id` dalla pipeline invece che dalla firma. Corretto un
+`ETICHETTE_MOD` duplicato che silenziava meta' delle etichette dichiarate.*
 
 *v0.13: meta' di `build/` e' passata a GSP — sei diagnostici e
 `medie_nazionali`, che ora e' una fonte del registro (§7.1). `quartiere`
@@ -9,8 +20,8 @@ verificato uno-a-uno con `zona`, quindi eliminabile dal Parquet. Deciso cosa
 fara' `--pubblico`: via e civico fuori, coordinata casuale dentro la sezione
 (§15).*
 
-Riferimento dati: `GSP_popolazioni_full_riferimento_v22.md`, **v2.2**.
-I rimandi a §13, §14 e §15 senza altra indicazione sono a quel documento.
+Riferimento dati: `GSP_popolazioni_full_riferimento_v24.md`, **v2.4**.
+I rimandi a §13, §14, §15 e §16 senza altra indicazione sono a quel documento.
 
 *Rispetto alla v0.9: undici comuni invece di quattro, e due livelli di
 constraint set. La copertura del riferimento non e' identica fra citta' ma
@@ -264,6 +275,16 @@ a Brescia, **Zona** a Bologna, **Area** a Ravenna, **Circoscrizione** a
 Reggio. Dove `zona` esiste ma e' degenere (un valore solo, `'0'`) il manifest
 la esclude: un pannello con una barra al 100% e' peggio che non averlo.
 
+**I nomi delle zone vengono dal registro**, non dalla colonna `quartiere`
+che il regime pubblico toglie. Tre ragioni, e la prima vale a prescindere
+dal regime: nel registro sono **verificati per due vie indipendenti**
+(baricentri dei civici ANNCSU e concentrazione dei toponimi), mentre
+prenderli come moda di `quartiere` dentro ogni `zona` e' una derivazione
+dai dati che puo' essere ambigua — `manifest_min` stampava un avviso
+quando lo era. La ridondanza va tolta dal **dato**, non dall'**etichetta**.
+E cosi' il manifest non dipende piu' da quali colonne il regime lascia
+passare.
+
 ### 4.2 Marginali — tre marcatori
 
 | | cos'e' | lo scarto misura |
@@ -420,6 +441,99 @@ su 3.220 osservazioni efficaci»*. Poi il pulsante per entrare.
 E' anche mezzo «Confronta» (§4.5) arrivato in anticipo: due schede aperte in
 successione mettono a fianco Bologna e Castenaso senza costruire una vista
 nuova.
+
+---
+
+### 4.9 Nuclei familiari
+
+L'anello 4 nel bundle: `nucleo` e' il progressivo **dentro la sezione**,
+`ruolo` una lettera fra `R P F G A N`. Un nucleo e' identificato dalla
+**coppia** `(sezione, nucleo)` — contare i progressivi distinti da' 367
+invece di 85.249, ed e' un errore che si rifa' perche' `nunique()` su una
+colonna sembra la cosa ovvia da scrivere.
+
+`nucleo = -1` **non e' un dato mancante**: e' popolazione in convivenza
+anagrafica — case di riposo, studentati, caserme — dedotta dal residuo dei
+vincoli censuari. L'1,1–2,3% a seconda del comune, mostrato come categoria.
+
+**Perche' il progressivo e non l'`id_nucleo` per esteso.** La stringa
+`360230002112-000003` contiene la sezione, che nella riga c'e' gia': e'
+ridondanza da 4 MB dove basta un `int16` da 0,17. Verificato che nessun
+nucleo stia a cavallo di due sezioni, quindi il progressivo identifica.
+
+#### Tre blocchi, tre statuti diversi
+
+**Famiglie per ampiezza** — l'unico col rombo censuario, da `PF3`–`PF8` del
+censimento permanente 2023 (`build_rif_nuclei.py`). Ma e' **lo stesso
+vincolo** da cui l'anello 4 costruisce i nuclei, quindi il rombo non
+verifica che il modello indovini: verifica che il vincolo sia stato
+applicato. Il totale coincide alla cifra — 85.249 famiglie su Modena — e la
+distribuzione no, con scarti fra +277 e −177, meno dello 0,8%.
+
+> **Lo scarto e' il contenuto informativo, non l'errore.** Su 2.118 sezioni
+> solo 994 tornano esatte: le altre richiedono un aggiustamento — sovrastima,
+> troncamento della classe aperta, convivenza — e quegli aggiustamenti
+> spostano famiglie fra le classi. Il verso e' leggibile: piu' unipersonali e
+> meno nuclei grandi di quanti il censimento ne dichiari, coerente col
+> troncamento.
+
+`PF8` e' la classe **«6 e oltre»**, quindi l'ultima barra e' etichettata
+`6+`: senza, il confronto sembra sbagliato dove i nuclei grandi esistono.
+
+**Tipologia familiare** — coppia con figli, monogenitore, unipersonale.
+**Nessun riferimento censuario**: le configurazioni interne vengono dal
+repertorio AVQ, che e' emiliano-lombardo e non comunale. E' modello, e il
+pannello lo dichiara come fa per gli incroci non vincolati.
+
+**In cifre** — e qui una distinzione che va risolta nell'etichetta, non
+lasciata al lettore:
+
+```
+famiglie unipersonali    41,8%     ← quota di FAMIGLIE
+persone che vivono sole  19,3%     ← quota di PERSONE
+```
+
+Entrambe vere, entrambe su Modena, e rispondono a domande diverse. Una
+pagina di statistiche demografiche che ne mostra una sola invita
+l'interpretazione sbagliata dell'altra.
+
+#### La scheda di famiglia
+
+Si apre da «mostrami una famiglia a caso» e **rispetta il filtro attivo** —
+quindi «una famiglia con almeno uno straniero in questo quartiere» si
+ottiene filtrando e ripescando. E' anche il modo piu' efficace per farsi
+un'idea della qualita': e' cosi' che e' stato trovato il caso delle coppie
+coniugato+vedovo.
+
+Mostra i membri in ordine di ruolo, la **firma** — `RPFF`, in ordine
+gerarchico e non alfabetico — e i **divari d'eta' dal riferimento**, che
+rendono visibile il vincolo all'opera: generazionale 20–40 anni, fra partner
+±15.
+
+**Quando il nucleo ha coniugati spaiati, compare un avviso invece di essere
+nascosto.** Capita in un caso su quattro, e la nota spiega che non e' un
+difetto dell'assemblaggio: il constraint set non impone che i coniugati
+siano in numero pari dentro una sezione, quindi in molte sezioni restano
+spaiati. **L'anello 4 rivela un'incoerenza gia' presente nell'anello 1, non
+la crea** — ed e' lo stesso schema delle 26 combinazioni impossibili di §14.2
+del riferimento.
+
+Scomposto per ruolo, il 23,6% di «coniugati incoerenti» dice l'opposto di
+quel che sembra:
+
+```
+17,7%   coniugati con ruolo F, A, G, N   il ruolo stesso esclude la coppia
+ 6,0%   coniugati R o P spaiati          questo e' l'appaiamento
+```
+
+Tre quarti non sono un difetto: sono figli sposati che vivono coi genitori,
+che in Italia esistono. La metrica aggregata mescola tre cose diverse.
+
+In fondo alla scheda, la distinzione di statuto: **vincolato** sesso, eta',
+stato civile, istruzione, cittadinanza; **derivato** il ruolo e la firma.
+La scheda si legge come una famiglia, ma le due meta' non hanno lo stesso
+statuto — ed e' §3.1 del piano di trattamento applicato a un gruppo invece
+che a un individuo.
 
 ---
 
@@ -585,6 +699,8 @@ Undici citta' ≈ 1,9 milioni di individui e **35,7 MB** di bundle, di cui
 **F4** ✔ riferimento censuario dal constraint set.
 **F5** ◧ mappa: quota, punti, navigazione, base cartografica.
 **F6** ✔ fiducia istituzionale, a quattordici voci, con `n_eff` per variabile.
+**F7** ✔ **nuclei familiari** (§4.9): ampiezza col rombo censuario, tipologia
+dichiarata come modello, scheda di famiglia con firma e divari d'eta'.
 
 **Undici comuni** ✔ due livelli, quattro tier, `build_bundle.py`. Il pannello
 non e' stato toccato per adattarsi: si costruisce dal manifest.
@@ -593,14 +709,14 @@ non e' stato toccato per adattarsi: si costruisce dal manifest.
 
 **Prossime:**
 
-**F7 — le altre AVQ**, con la stessa disciplina: universo dichiarato, banda su
+**F8 — le altre AVQ**, con la stessa disciplina: universo dichiarato, banda su
 `n_eff` della variabile, riga di scomposizione compositiva. `BMI` e `BMIMIN`
 vanno unite — stessa misura su due universi — e `BMIMIN` non e' nemmeno nel
 set attuale, che il registro esclude di proposito. Non serve rigenerare: le
 23 AVQ sono gia' nel Parquet.
-**F8 — Confronta** fra citta'.
-**F9 — Metodo**: la pagina che rende l'app difendibile.
-**F10 — grafica** e pubblicazione definitiva.
+**F9 — Confronta** fra citta'. L'atlante ne e' gia' meta' (§4.8).
+**F10 — Metodo**: la pagina che rende l'app difendibile.
+**F11 — grafica** e pubblicazione definitiva.
 
 ---
 
@@ -612,14 +728,24 @@ set attuale, che il registro esclude di proposito. Non serve rigenerare: le
    dichiarato, banda su `n_eff` della variabile, riga di scomposizione
    compositiva. `BMI` e `BMIMIN` vanno unite — sono la stessa misura su due
    universi. **Non serve rigenerare niente**: sono gia' nel Parquet.
-2. ~~Fonte delle medie nazionali AVQ 2024~~ — **risolta** il 2/8/2026, ma non
+2. **`nucleo` e `ruolo` stanno nel blocco A**, quindi ogni sessione paga
+   0,22 MB anche senza aprire la pagina dei nuclei — il blocco dei filtri
+   cresce del 33%. Accettabile oggi; se pesasse, andrebbero in un blocco
+   proprio letto su richiesta, come le AVQ e la mappa.
+3. **Il rombo dell'ampiezza compare solo senza filtro.** `rif_nuclei.json`
+   ha le sezioni, quindi tecnicamente si potrebbe filtrare per zona — ma
+   filtrando per eta' o istruzione i nuclei si **spezzano**, e confrontare
+   mezze famiglie col censimento non ha senso. Oggi il rombo sparisce in
+   entrambi i casi; distinguere i filtri spaziali dagli altri lo renderebbe
+   disponibile dove e' lecito.
+4. ~~Fonte delle medie nazionali AVQ 2024~~ — **risolta** il 2/8/2026, ma non
    trovandola: non esiste. Ricalcolate da `medie_nazionali.py` sui microdati,
    coincidono entro 0,045 con quelle cablate e ora coprono tutte e ventitre
    le variabili (§4.7, riferimento §2.2).
-3. **`--pubblico` in `to_parquet.py`**: toglie `via` e `civico`. Necessario
-   prima della pubblicazione per arXiv, dove la configurazione si rovescia
-   (§15).
-4. ~~**Fonti comunali di zona** come *validazione esterna*: quali sono
+5. ~~`--pubblico` in `to_parquet.py`~~ — **risolto** il 15/8/2026, e non
+   scrivendolo: il regime esisteva gia' in `gsp.individui`, mancava il
+   collegamento. `to_parquet` chiama ora `esporta_pubblico` (§15).
+6. ~~**Fonti comunali di zona** come *validazione esterna*: quali sono
    disponibili come livelli?~~ — **chiusa** il 2/8/2026 dal registro delle
    fonti di GSP, che le ha censite tutte e sei con il loro tier:
 
@@ -642,7 +768,7 @@ set attuale, che il registro esclude di proposito. Non serve rigenerare: le
 
    Documentazione: `fonti/registro.yaml` in GSP e
    `note/fonti_e_pacchetto_v3.md`.
-5. **Emilia-Romagna**: quanti capoluoghi, e la vista regionale entra o resta
+7. **Emilia-Romagna**: quanti capoluoghi, e la vista regionale entra o resta
    predisposta?
 
 **Sulla pipeline**, tutte migrate al documento di riferimento:
@@ -890,8 +1016,10 @@ accesso ristretto (Access, gratuito fino a 50 persone).
 
 Il rovescio: **il deploy non e' versionato**.
 
-**Cosa e' esposto**: `index.html`, `smoke.html` e il **bundle completo**.
-Chiunque abbia l'URL puo' scaricare `pop.parquet`. E' deliberato:
+**Cosa e' esposto**: `index.html`, `smoke.html` e il bundle **in regime
+pubblico**. Chiunque abbia l'URL puo' scaricare `pop.parquet` — e questo
+resta deliberato, ma dal 15/8/2026 il file che scarica non contiene piu'
+indirizzi:
 
 - **nessuna divulgazione statistica** — ANNCSU, microdati AVQ *public use* e
   tavole censuarie sono gia' pubblici, e la popolazione e' una ricombinazione
@@ -908,8 +1036,10 @@ la sezione in modo arbitrario». Era l'argomento corretto, ma **il banner
 non viaggia con il file**: `pop.parquet` e' servito staticamente e
 chiunque puo' scaricarlo.
 
-Dal 4/8/2026 il divario e' chiuso nel dato invece che nell'avvertenza.
-`to_parquet.py` produce per **default** un Parquet in regime pubblico:
+Dal 15/8/2026 il divario e' chiuso **nel dato** invece che
+nell'avvertenza. `to_parquet.py` non legge piu' il CSV completo: chiede a
+`gsp.individui.esporta_pubblico` la popolazione gia' proiettata nel regime
+`pubblico`, e produce per **default** un Parquet che ha:
 
 - **`lon` e `lat` sono un punto casuale dentro la sezione**, non il
   civico assegnato;
@@ -929,6 +1059,25 @@ la densita' per sezione e' la stessa, e il file diventa **autoprotettivo**
 — «il punto e' casuale dentro la sezione» e' una frase che non ammette
 repliche, mentre «spostato di trenta metri» inviterebbe la domanda «e se
 fossero venti?».
+
+**La proiezione non e' fatta qui.** `to_parquet.py` chiama
+`gsp.individui.esporta_pubblico`, che applica `REGIMI["pubblico"]` — lo
+stesso punto in cui sono definiti `persona` e `narrativo`. Replicare le
+regole nel viewer avrebbe prodotto due copie destinate a divergere in
+silenzio, ed e' esattamente cio' che era gia' successo: fino al 15/8 il
+piano di trattamento **descriveva** un regime che il bundle non applicava.
+La correzione non e' stata riscrivere la regola ma **collegare il
+percorso**.
+
+Il seme della randomizzazione e' derivato dal codice del comune, non
+passato: due bundle dello stesso comune escono identici, quindi resta
+possibile distinguere «rigenerato uguale» da «rigenerato diverso».
+
+**Misurato su Modena**: 100% dei punti resta dentro la propria sezione,
+spostamento mediano **87 m**, p95 **308 m** — la scala di una sezione
+urbana. Il file passa da 3,65 a 3,30 MB e le coordinate randomizzate si
+comprimono come prima (`lon` 0,351 contro 0,349 MB): la protezione non
+costa nulla.
 
 `--completo` tiene tutto, e serve alle diagnosi locali. E' un'**opzione**,
 non il default, perche' la scelta permissiva dev'essere un atto e non

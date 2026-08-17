@@ -150,18 +150,7 @@ TRONCA = {"paese": 15}
 # vanno sempre in coda, qualunque sia il criterio di ordinamento
 CODA = {"(mancante)", "non_applicabile"}
 
-ETICHETTE_MOD = {
-    "sesso": {"M": "Maschi", "F": "Femmine"},
-    "cittadinanza": {"ITL": "Italiana", "FRG": "Straniera"},
-    "istruzione": {
-        "nessun_titolo": "Nessun titolo",
-        "elementare": "Licenza elementare",
-        "media": "Licenza media",
-        "diploma": "Diploma",
-        "laurea_o_its": "Laurea o ITS",
-        "post_laurea": "Post-laurea",
-    },
-}
+
 
 
 # Etichetta del filtro spaziale: dipende dal comune, non e' sempre
@@ -244,18 +233,30 @@ def main():
 
         # etichette delle modalita': esplicite, oppure da una colonna gemella
         et = dict(ETICHETTE_MOD.get(nome, {}))
-        gemella = COLONNA_ETICHETTE.get(nome)
-        if gemella and gemella in df.columns:
-            moda = (df.groupby(nome, observed=True)[gemella]
-                      .agg(lambda s: s.mode().iat[0] if len(s.mode()) else ""))
-            ambigui = (df.groupby(nome, observed=True)[gemella]
-                         .nunique().gt(1).sum())
-            if ambigui:
-                print(f"[avviso] {nome}: {ambigui} codici con piu' di un "
-                      f"valore di '{gemella}'; presa la moda")
-            for k, v in moda.items():
-                if v:
-                    et.setdefault(str(k), str(v))
+        # Etichette di `zona` dal registro, non dalla colonna `quartiere`.
+        # Tre ragioni: i nomi sono verificati per due vie indipendenti
+        # (baricentri ANNCSU e concentrazione dei toponimi), mentre la moda
+        # per gruppo e' una derivazione dai dati che puo' essere ambigua;
+        # il regime pubblico toglie `quartiere` perche' e' uno-a-uno con
+        # `zona`, e la ridondanza va tolta dal DATO, non dall'ETICHETTA;
+        # e cosi' il manifest non dipende piu' da quali colonne il regime
+        # lascia passare.
+        if nome == "zona" and livello:
+            for k, v in (i_reg["livelli"][livello].get("nomi") or {}).items():
+                et.setdefault(str(k), str(v))
+        else:
+            gemella = COLONNA_ETICHETTE.get(nome)
+            if gemella and gemella in df.columns:
+                moda = (df.groupby(nome, observed=True)[gemella]
+                          .agg(lambda s: s.mode().iat[0] if len(s.mode()) else ""))
+                ambigui = (df.groupby(nome, observed=True)[gemella]
+                             .nunique().gt(1).sum())
+                if ambigui:
+                    print(f"[avviso] {nome}: {ambigui} codici con piu' di un "
+                          f"valore di '{gemella}'; presa la moda")
+                for k, v in moda.items():
+                    if v:
+                        et.setdefault(str(k), str(v))
 
         # ordine
         ordine = ORDINI.get(nome)

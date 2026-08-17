@@ -6,6 +6,17 @@ to_parquet.py — Animarium, passo 1 (v2)
 Converte `popolazione_K9C_avq_full.csv` in un Parquet ottimizzato per query
 filtrate dal browser, e riporta il peso compresso colonna per colonna.
 
+Regime
+------
+Di default il Parquet e' prodotto in regime **pubblico**: senza `uid`, `via`,
+`civico` e `indirizzo_fonte`, con `lon`/`lat` randomizzate dentro la sezione
+di censimento. La proiezione NON e' fatta qui — la fa
+`gsp.individui.esporta_pubblico`, che e' il solo punto in cui i regimi sono
+implementati (§4 del piano di trattamento).
+
+Con `--completo` si ottiene la popolazione intera, che **non e' diffondibile**
+e serve solo a diagnostica locale.
+
 Novita' della v2, tutte dettate dalle misure dello smoke test
 -------------------------------------------------------------
 Lo smoke test su Modena ha mostrato che DuckDB-WASM **legge a blocchi
@@ -77,12 +88,13 @@ import pyarrow.parquet as pq
 # schema per cui FORZE_ARMATE era sfuggita alla lista di assign_avq.py.
 AVQ = None          # popolato in main() da G.AVQ_TARGETS + G.AVQ_OPZIONALI
 LIVELLO = None      # livello del constraint set risolto (K9C, K6C, ...)
+I = None            # modulo gsp.individui, importato in main()
 
 # Blocco A — filtri e marginali. E' la lettura che l'interfaccia fa sempre.
 BLOCCO_A = ["zona", "quartiere", "sesso", "eta", "stato_civile",
             "cittadinanza", "istruzione", "condizione", "background",
             "origine_genitori", "paese", "area", "eta_anni", "quinq",
-            "sezione"]
+            "sezione", "nucleo", "ruolo"]
 
 # Blocco C — pesanti, servono solo alla mappa a punti e alla scheda individuo.
 BLOCCO_C = ["id", "indirizzo_fonte", "via", "civico", "lon", "lat"]
@@ -170,14 +182,21 @@ def main():
                     help="tieni solo le AVQ numeriche: le grezze sono "
                          "ricostruibili da donor_id (design §3.2)")
     ap.add_argument("--completo", action="store_true",
-                    help="tieni via, civico, quartiere e le coordinate "
-                         "esatte: SOLO per diagnosi locali, mai per il "
-                         "bundle pubblicato")
+                    help="NON applica il regime pubblico: tiene via, civico "
+                         "e coordinate esatte. Il file risultante non e' "
+                         "diffondibile — serve solo a diagnostica locale.")
+    ap.add_argument("--senza-nuclei", action="store_true",
+                    help="non includere l'anello 4. Di default `nucleo` e "
+                         "`ruolo` ci sono, se il file dei nuclei esiste: un "
+                         "flag che va ricordato e' un flag che prima o poi "
+                         "si dimentica, e un bundle senza nuclei produce una "
+                         "pagina vuota senza dire perche'.")
     args = ap.parse_args()
 
-    global AVQ
+    global AVQ, I
     G = carica_gsp()
     AVQ = list(G.AVQ_TARGETS) + list(G.AVQ_OPZIONALI)
+    from gsp import individui as I
 
     src, out = risolvi(args.comune, args.anno, args.pop_file, args.out)
     print(f"[info] sorgente: {src}")
@@ -190,10 +209,26 @@ def main():
     t0 = time.time()
     dtypes = {c: "string" for c in STRINGHE}
     dtypes.update({c: "string" for c in AVQ})
-    p = pd.read_csv(src, low_memory=False, dtype=dtypes)
+    t0 = time.time()
+    csv_bytes = os.path.getsize(src)
+    if args.completo:
+        print("[ATTENZIONE] --completo: il Parquet conterra' via, civico e")
+        print("             coordinate ANNCSU esatte. NON e' diffondibile.")
+        dtypes = {c: "string" for c in STRINGHE}
+        dtypes.update({c: "string" for c in AVQ})
+        p = pd.read_csv(src, low_memory=False, dtype=dtypes)
+    else:
+        p = I.esporta_pubblico(comune=args.comune, anno=int(args.anno),
+                               con_nuclei=not args.senza_nuclei)
+        for c in STRINGHE + AVQ:
+            if c in p.columns:
+                p[c] = p[c].astype("string")
     print(f"[info] lette {len(p):,} righe x {len(p.columns)} colonne "
           f"in {time.time() - t0:.1f}s".replace(",", "."))
-    csv_bytes = os.path.getsize(src)
+    if not args.completo:
+        print("[info] regime `pubblico`: senza uid, via, civico; "
+              "coordinate randomizzate dentro la sezione")
+   
 
     # --- colonne derivate -------------------------------------------------
     if "eta_anni" not in p.columns:
@@ -355,6 +390,7 @@ def main():
     print("Scrittura")
     print("---------")
     print(f"tempo                  {dt:8.1f} s")
+    print(f"regime                {'COMPLETO (non diffondibile)' if args.completo else 'pubblico':>11}")
     print(f"CSV sorgente          {mb(csv_bytes)}")
     print(f"Parquet               {mb(par_bytes)}   "
           f"({par_bytes / csv_bytes:.1%} del CSV)")

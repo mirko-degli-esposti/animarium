@@ -1,7 +1,13 @@
 # Animarium — documento di design
 
 **Synthetic populations of Italian cities**
-**v0.13 — 4 agosto 2026**
+**v0.14 — 15 agosto 2026**
+
+*v0.14: il regime pubblico e' **applicato**, non piu' solo deciso —
+`to_parquet` legge da `gsp.individui.esporta_pubblico` (§15). Etichette di
+`zona` dal registro invece che dalla colonna `quartiere`, che il regime
+toglie. `donor_id` dalla pipeline invece che dalla firma. Corretto un
+`ETICHETTE_MOD` duplicato che silenziava meta' delle etichette dichiarate.*
 
 *v0.13: meta' di `build/` e' passata a GSP — sei diagnostici e
 `medie_nazionali`, che ora e' una fonte del registro (§7.1). `quartiere`
@@ -9,7 +15,7 @@ verificato uno-a-uno con `zona`, quindi eliminabile dal Parquet. Deciso cosa
 fara' `--pubblico`: via e civico fuori, coordinata casuale dentro la sezione
 (§15).*
 
-Riferimento dati: `GSP_popolazioni_full_riferimento_v22.md`, **v2.2**.
+Riferimento dati: `GSP_popolazioni_full_riferimento_v23.md`, **v2.3**.
 I rimandi a §13, §14 e §15 senza altra indicazione sono a quel documento.
 
 *Rispetto alla v0.9: undici comuni invece di quattro, e due livelli di
@@ -263,6 +269,16 @@ L'etichetta del filtro spaziale segue il livello del comune — **Quartiere**
 a Brescia, **Zona** a Bologna, **Area** a Ravenna, **Circoscrizione** a
 Reggio. Dove `zona` esiste ma e' degenere (un valore solo, `'0'`) il manifest
 la esclude: un pannello con una barra al 100% e' peggio che non averlo.
+
+**I nomi delle zone vengono dal registro**, non dalla colonna `quartiere`
+che il regime pubblico toglie. Tre ragioni, e la prima vale a prescindere
+dal regime: nel registro sono **verificati per due vie indipendenti**
+(baricentri dei civici ANNCSU e concentrazione dei toponimi), mentre
+prenderli come moda di `quartiere` dentro ogni `zona` e' una derivazione
+dai dati che puo' essere ambigua — `manifest_min` stampava un avviso
+quando lo era. La ridondanza va tolta dal **dato**, non dall'**etichetta**.
+E cosi' il manifest non dipende piu' da quali colonne il regime lascia
+passare.
 
 ### 4.2 Marginali — tre marcatori
 
@@ -890,8 +906,10 @@ accesso ristretto (Access, gratuito fino a 50 persone).
 
 Il rovescio: **il deploy non e' versionato**.
 
-**Cosa e' esposto**: `index.html`, `smoke.html` e il **bundle completo**.
-Chiunque abbia l'URL puo' scaricare `pop.parquet`. E' deliberato:
+**Cosa e' esposto**: `index.html`, `smoke.html` e il bundle **in regime
+pubblico**. Chiunque abbia l'URL puo' scaricare `pop.parquet` — e questo
+resta deliberato, ma dal 15/8/2026 il file che scarica non contiene piu'
+indirizzi:
 
 - **nessuna divulgazione statistica** — ANNCSU, microdati AVQ *public use* e
   tavole censuarie sono gia' pubblici, e la popolazione e' una ricombinazione
@@ -908,8 +926,10 @@ la sezione in modo arbitrario». Era l'argomento corretto, ma **il banner
 non viaggia con il file**: `pop.parquet` e' servito staticamente e
 chiunque puo' scaricarlo.
 
-Dal 4/8/2026 il divario e' chiuso nel dato invece che nell'avvertenza.
-`to_parquet.py` produce per **default** un Parquet in regime pubblico:
+Dal 15/8/2026 il divario e' chiuso **nel dato** invece che
+nell'avvertenza. `to_parquet.py` non legge piu' il CSV completo: chiede a
+`gsp.individui.esporta_pubblico` la popolazione gia' proiettata nel regime
+`pubblico`, e produce per **default** un Parquet che ha:
 
 - **`lon` e `lat` sono un punto casuale dentro la sezione**, non il
   civico assegnato;
@@ -929,6 +949,25 @@ la densita' per sezione e' la stessa, e il file diventa **autoprotettivo**
 — «il punto e' casuale dentro la sezione» e' una frase che non ammette
 repliche, mentre «spostato di trenta metri» inviterebbe la domanda «e se
 fossero venti?».
+
+**La proiezione non e' fatta qui.** `to_parquet.py` chiama
+`gsp.individui.esporta_pubblico`, che applica `REGIMI["pubblico"]` — lo
+stesso punto in cui sono definiti `persona` e `narrativo`. Replicare le
+regole nel viewer avrebbe prodotto due copie destinate a divergere in
+silenzio, ed e' esattamente cio' che era gia' successo: fino al 15/8 il
+piano di trattamento **descriveva** un regime che il bundle non applicava.
+La correzione non e' stata riscrivere la regola ma **collegare il
+percorso**.
+
+Il seme della randomizzazione e' derivato dal codice del comune, non
+passato: due bundle dello stesso comune escono identici, quindi resta
+possibile distinguere «rigenerato uguale» da «rigenerato diverso».
+
+**Misurato su Modena**: 100% dei punti resta dentro la propria sezione,
+spostamento mediano **87 m**, p95 **308 m** — la scala di una sezione
+urbana. Il file passa da 3,65 a 3,30 MB e le coordinate randomizzate si
+comprimono come prima (`lon` 0,351 contro 0,349 MB): la protezione non
+costa nulla.
 
 `--completo` tiene tutto, e serve alle diagnosi locali. E' un'**opzione**,
 non il default, perche' la scelta permissiva dev'essere un atto e non
