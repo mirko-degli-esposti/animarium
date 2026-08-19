@@ -57,8 +57,6 @@ import sys
 
 import pandas as pd
 
-GSP_SRC = os.path.expanduser("~/progetti/gsp/src")
-
 # PF3 = 1 componente, PF4 = 2, ... PF8 = «6 e oltre». PF1 e' il totale
 # famiglie, PF9 sta fuori dalla serie delle ampiezze.
 PF = {f"PF{k + 2}": k for k in range(1, 7)}
@@ -66,8 +64,6 @@ AMP_MAX = 6
 
 
 def carica_gsp():
-    if GSP_SRC not in sys.path:
-        sys.path.insert(0, GSP_SRC)
     try:
         import gsp.common as G  # type: ignore
         return G

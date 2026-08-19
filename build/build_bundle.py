@@ -60,7 +60,7 @@ def carica_gsp():
     except Exception as e:
         sys.exit(f"errore: gsp.common non importabile ({e})")
 
-def copia_medie():
+def copia_medie(G):
     """`medie_nazionali.json` e' prodotto da GSP, non da qui.
 
     Prima viveva in `build/` e scriveva direttamente nel bundle, il che
@@ -70,8 +70,7 @@ def copia_medie():
     gsp/scripts/riferimenti/ e l'uscita e' una fonte del registro
     (`avq_medie_nazionali`, derivata da `avq_microdati`).
     """
-    src = os.path.expanduser(
-        "~/progetti/gsp/fonti/derivati/medie_nazionali.json")
+    src = os.path.join(G.GSP, "fonti", "derivati", "medie_nazionali.json")
     dst = os.path.join(RADICE, "bundle", "medie_nazionali.json")
     if not os.path.exists(src):
         print(f"[avviso] {src} assente:")
@@ -139,7 +138,7 @@ def main():
     comuni = args.comuni or sorted(G.COMUNI)
     
     print(f"[bundle] {len(comuni)} comuni · anno {args.anno} · radice {RADICE}")
-    copia_medie()
+    copia_medie(G)
     print()
 
     esiti = []

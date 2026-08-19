@@ -48,7 +48,11 @@ import json
 import os
 import sys
 
-GSP = os.path.expanduser("~/progetti/gsp/data/comuni")
+try:
+    import gsp.common as _G  # type: ignore
+except Exception as e:
+    sys.exit(f"errore: gsp.common non importabile ({e})")
+GSP = _G.COMUNI_DIR
 
 # Gli attributi su cui si misura la copertura NON sono cablati: sono le
 # variabili del constraint set, lette dal campo `vars`. Cablarli renderebbe

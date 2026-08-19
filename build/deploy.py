@@ -104,7 +104,7 @@ def main():
         print("[avviso] manca bundle/medie_nazionali.json: le tacche delle "
               "medie nazionali non compariranno")
         print("         lo copia build_bundle.py da "
-              "~/progetti/gsp/fonti/derivati/")
+              "$GSP_ROOT/fonti/derivati/ (default ~/progetti/gsp)")
     open(os.path.join(out, ".nojekyll"), "w").close()
 
     # --- inventario -------------------------------------------------------

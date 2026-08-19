@@ -21,7 +21,7 @@ Server statico che fa tre cose che `python -m http.server` non fa:
 
 Uso
 ---
-    cd ~/progetti/gsp/animarium
+    cd <clone di animarium>
     python build/serve_range.py
 
     http://localhost:8000/build/smoke_duckdb.html
