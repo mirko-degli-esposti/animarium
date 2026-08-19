@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use Animarium or the populations it displays, please cite the technical report below."
+type: software
+title: "Animarium — a browser viewer for GSP synthetic populations of Italian municipalities"
+authors:
+  - family-names: Degli Esposti
+    given-names: Mirko
+    orcid: "https://orcid.org/0000-0003-0316-3449"
+    affiliation: "Department of Physics and Astronomy (DIFA), University of Bologna"
+    email: mirko.degliesposti@unibo.it
+version: 1.0.0
+date-released: 2026-XX-XX
+license: MIT
+repository-code: "https://github.com/mirko-degli-esposti/Animarium"
+url: "https://animarium.pages.dev"
+keywords:
+  - synthetic populations
+  - data visualisation
+  - DuckDB-WASM
+  - Italian census data
+preferred-citation:
+  type: report
+  title: "Animarium: an open, reproducible pipeline for synthetic populations of Italian cities — from ISTAT sources to open data"
+  authors:
+    - family-names: Degli Esposti
+      given-names: Mirko
+      orcid: "https://orcid.org/0000-0003-0316-3449"
+  year: 2026
+  notes: "arXiv identifier to be added on release (report v1.0)."
+references:
+  - type: software
+    title: "GSP — Generative Synthetic Populations"
+    authors:
+      - family-names: Degli Esposti
+        given-names: Mirko
+        orcid: "https://orcid.org/0000-0003-0316-3449"
+    repository-code: "https://github.com/mirko-degli-esposti/gsp"
+    year: 2026
