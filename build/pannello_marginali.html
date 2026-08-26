@@ -280,7 +280,10 @@
   <div class="mappa-cima">
     <select id="fondoAtl">
       <option value="" selected>nessuna base</option>
-      <option value="carto">base chiara (servizio esterno: CARTO)</option>
+      <!-- CARTO disattivato il 26/8/2026: il loro CDN ha iniziato a
+           richiedere una API key e le tile tornano come immagini di
+           errore. Riattivabile se la policy cambia o con una chiave. -->
+      <!-- <option value="carto">base chiara (servizio esterno: CARTO)</option> -->
       <option value="osm">OpenStreetMap (servizio esterno)</option>
     </select>
   </div>
@@ -310,7 +313,10 @@
     </select>
     <select id="fondo">
       <option value="" selected>nessuna base</option>
-      <option value="carto">base chiara (servizio esterno: CARTO)</option>
+      <!-- CARTO disattivato il 26/8/2026: il loro CDN ha iniziato a
+           richiedere una API key e le tile tornano come immagini di
+           errore. Riattivabile se la policy cambia o con una chiave. -->
+      <!-- <option value="carto">base chiara (servizio esterno: CARTO)</option> -->
       <option value="osm">OpenStreetMap (servizio esterno)</option>
     </select>
     <select id="risoluzione">

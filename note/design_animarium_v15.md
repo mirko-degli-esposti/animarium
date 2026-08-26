@@ -1133,3 +1133,28 @@ versione precedente.
 un bundle **degradato** di una citta' sola per riprodurre le figure, con i
 dati completi su richiesta. Un referee ragionevole chiedera' di poter rifare
 almeno una figura, e «il codice senza dati» non basta.
+
+
+### Base cartografica: CARTO disattivato (26 agosto 2026)
+
+Il selettore del fondo offriva due provider esterni, CARTO e
+OpenStreetMap, con CARTO come default fino alla patch del 25/8 che ha
+reso il fondo opt-in. Il 26/8, senza modifiche al nostro codice — il
+deploy in produzione era fermo alle 10:32 dello stesso giorno — le tile
+CARTO hanno iniziato a tornare come immagini di errore con la scritta
+*API KEY REQUIRED*: il loro CDN ha smesso di servire richieste anonime.
+OSM continua a funzionare.
+
+L'opzione CARTO è **commentata nel markup** (entrambi i selettori,
+mappa e atlante), non rimossa: il codice che costruisce l'URL delle
+tile e l'attribuzione restano, così riattivarla è togliere due commenti
+se la policy cambia o se si decide di gestire una chiave.
+
+Il fatto vale più della patch: è la dimostrazione empirica
+dell'argomento con cui il fondo era stato reso opt-in il giorno prima.
+Un servizio esterno può smettere di rispondere senza preavviso, e con
+il fondo attivo di default il sito si sarebbe presentato rotto a ogni
+visitatore, per una ragione che non dipende da noi e su cui non
+possiamo intervenire. La sostituzione progettata — un estratto PMTiles
+servito dalla stessa origine del bundle (v1.1, `nota_pmtiles_v0.1`) —
+non ha questo modo di fallire.
