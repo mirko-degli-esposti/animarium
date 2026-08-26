@@ -277,6 +277,13 @@
 </div>
 
 <div id="zonaAtlante" hidden>
+  <div class="mappa-cima">
+    <select id="fondoAtl">
+      <option value="" selected>nessuna base</option>
+      <option value="carto">base chiara (servizio esterno: CARTO)</option>
+      <option value="osm">OpenStreetMap (servizio esterno)</option>
+    </select>
+  </div>
   <canvas id="atlante"></canvas>
   <div class="atl-nota" id="atlNota"></div>
   <div id="cartaComune" hidden></div>
@@ -302,9 +309,9 @@
       <option value="punti">punti — individui campionati, cliccabili</option>
     </select>
     <select id="fondo">
-      <option value="">nessuna base</option>
-      <option value="carto" selected>base chiara (CARTO)</option>
-      <option value="osm">OpenStreetMap</option>
+      <option value="" selected>nessuna base</option>
+      <option value="carto">base chiara (servizio esterno: CARTO)</option>
+      <option value="osm">OpenStreetMap (servizio esterno)</option>
     </select>
     <select id="risoluzione">
       <option value="45">celle grosse</option>
@@ -435,6 +442,14 @@ function disegnaAtlante() {
   vistaAtl = preparaAtlante(w, h);
   if (!vistaAtl) { $("atlNota").textContent = "indice senza coordinate"; return; }
   disegnaFondo(g, w, h, vistaAtl);
+    if ($("fondo").value) {
+    g.font = "10px ui-sans-serif, sans-serif";
+    g.fillStyle = "rgba(27,26,23,.6)";
+    g.textAlign = "left";
+    g.fillText($("fondo").value === "osm" ? "© OpenStreetMap contributors"
+      : "© OpenStreetMap contributors, © CARTO", 6, h - 6);
+    g.textAlign = "center";
+  }
 
   const px = (lon) => (MX(lon) - vistaAtl.cx) * vistaAtl.scala + w / 2;
   const py = (lat) => (MY(lat) - vistaAtl.cy) * vistaAtl.scala + h / 2;
@@ -1742,6 +1757,7 @@ $("btn-mappa").addEventListener("click", async (e) => {
   scriviURL();
   if (mappaOn) await aggiornaMappa(ultimaQuota);
 });
+
 $("modo").addEventListener("change", (e) => {
   modo = e.target.value;
   $("capPunti").hidden = modo !== "punti";
@@ -1750,7 +1766,16 @@ $("modo").addEventListener("change", (e) => {
   scriviURL();
   aggiornaMappa(ultimaQuota);
 });
-$("fondo").addEventListener("change", () => chiediRidisegno());
+$("fondoAtl").addEventListener("change", () => {
+  $("fondo").value = $("fondoAtl").value;
+  disegnaAtlante();
+  if (mappaOn) chiediRidisegno();
+});
+$("fondo").addEventListener("change", () => {
+  $("fondoAtl").value = $("fondo").value;   // un solo stato, due comandi
+  chiediRidisegno();
+  if (atlanteOn) disegnaAtlante();
+});
 $("risoluzione").addEventListener("change", () => { geo = null; aggiornaMappa(ultimaQuota); });
 $("capPunti").addEventListener("change", () => aggiornaMappa(ultimaQuota));
 addEventListener("resize", () => { if (mappaOn && vista) chiediRidisegno(); });
