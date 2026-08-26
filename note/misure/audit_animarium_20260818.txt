@@ -1,0 +1,100 @@
+== repo: /home/mirko/progetti/animarium  HEAD: 026afe5  branch: main
+== remote:
+   origin	git@github.com:mirko-degli-esposti/Animarium.git (fetch)
+   origin	git@github.com:mirko-degli-esposti/Animarium.git (push)
+
+== 1. blobs > 2 MB anywhere in history (viewer repo: threshold lower than GSP)
+
+== 2. generated products ever committed (bundle, deploy, dist, parquet, per-comune json, node_modules)
+build/build_bundle.py
+build/build_indice.py
+build/build_rif_nuclei.py
+build/build_riferimenti.py
+build/deploy.py
+build/diag_istruzione_eta.py
+build/diag_quinq.py
+build/ispeziona_avq.py
+build/ispeziona_cs.py
+build/manifest_min.py
+build/medie_nazionali.py
+build/pannello_marginali.html
+build/serve_range.py
+build/smoke_duckdb.html
+build/to_parquet.py
+build/verifica_donor.py
+build/verifica_vincoli.py
+
+== 3. currently tracked files under bundle/ deploy/ dist/ (should be empty)
+build/build_bundle.py
+build/build_indice.py
+build/build_rif_nuclei.py
+build/build_riferimenti.py
+build/deploy.py
+build/manifest_min.py
+build/pannello_marginali.html
+build/serve_range.py
+build/smoke_duckdb.html
+build/to_parquet.py
+
+== 4. secrets: Cloudflare / wrangler / API tokens (grep fallback if gitleaks absent)
+.wrangler/cache/pages.json:2:  "account_id": "d707477b69128d6629c4f5c765428333",
+build/build_bundle.py:231:    print("  Per pubblicare:  python build/deploy.py  &&  npx wrangler pages "
+-- files that look like config with credentials:
+
+== 5. absolute / personal paths and sys.path hacks in tracked code
+build/build_bundle.py:74:        "~/progetti/gsp/fonti/derivati/medie_nazionali.json")
+build/build_rif_nuclei.py:60:GSP_SRC = os.path.expanduser("~/progetti/gsp/src")
+build/build_riferimenti.py:51:GSP = os.path.expanduser("~/progetti/gsp/data/comuni")
+build/deploy.py:107:              "~/progetti/gsp/fonti/derivati/")
+build/serve_range.py:24:    cd ~/progetti/gsp/animarium
+pyproject.toml:7:    "gsp",          # NON su PyPI: pip install -e ~/progetti/gsp
+-- sys.path manipulation (should be gone after the pyproject dependency on gsp):
+build/build_rif_nuclei.py:70:        sys.path.insert(0, GSP_SRC)
+
+== 6. python entry points and their gsp imports
+   237  build/build_bundle.py                         imports: import gsp.common;
+   164  build/build_indice.py                         imports: 
+   183  build/build_rif_nuclei.py                     imports: import gsp.common;
+   223  build/build_riferimenti.py                    imports: 
+   165  build/deploy.py                               imports: 
+   348  build/manifest_min.py                         imports: import gsp.common;
+   249  build/serve_range.py                          imports: 
+   452  build/to_parquet.py                           imports: import gsp.common;from gsp import individui as I;
+
+== 7. the --pubblico blocker: where the bundle is written and whether esporta_pubblico is called
+build/build_bundle.py:9:    to_parquet.py  →  manifest_min.py  →  build_riferimenti.py  →  build_indice.py
+build/build_bundle.py:167:            ok, out = esegui("to_parquet.py", [c, "--drop-avq-raw"])
+build/build_bundle.py:172:                guasto = "to_parquet"
+build/manifest_min.py:189:                 f"       esegui prima: python build/to_parquet.py "
+build/to_parquet.py:3:to_parquet.py — Animarium, passo 1 (v2)
+build/to_parquet.py:14:`gsp.individui.esporta_pubblico`, che e' il solo punto in cui i regimi sono
+build/to_parquet.py:67:    python to_parquet.py 036023
+build/to_parquet.py:68:    python to_parquet.py 036023 --row-group 20000
+build/to_parquet.py:69:    python to_parquet.py 034027 --sort sezione --no-encodings
+build/to_parquet.py:221:        p = I.esporta_pubblico(comune=args.comune, anno=int(args.anno),
+
+== 8. front-end: dependency and deploy files
+-- CDN / external script URLs in html/js:
+https://cdn.js
+
+== 9. what a fresh clone can rebuild without GSP data: files read from outside the repo
+build/build_bundle.py:74:        "~/progetti/gsp/fonti/derivati/medie_nazionali.json")
+build/build_rif_nuclei.py:60:GSP_SRC = os.path.expanduser("~/progetti/gsp/src")
+build/build_riferimenti.py:51:GSP = os.path.expanduser("~/progetti/gsp/data/comuni")
+build/deploy.py:107:              "~/progetti/gsp/fonti/derivati/")
+build/serve_range.py:24:    cd ~/progetti/gsp/animarium
+
+== 10. licence / readme / citation
+  MISSING LICENSE
+  MISSING LICENSE.md
+  ok   README.md
+  MISSING CITATION.cff
+  ok   pyproject.toml
+
+== 11. tracked file inventory by top-level dir
+     12 note/
+     10 build/
+      4 .
+      2 .wrangler/
+
+== done
