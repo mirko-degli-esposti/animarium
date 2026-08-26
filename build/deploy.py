@@ -181,7 +181,7 @@ def main():
     print(f"\nVerifica che l'host supporti le richieste Range, altrimenti")
     print(f"DuckDB scarichera' i file interi:")
     print(f"  https://{utente.lower()}.github.io/{prog}/smoke.html")
-    print(f"Nel pannello di rete del browser, Q5 deve costare ~0,9 MB e non 3.")
+    print(f"Nel pannello di rete del browser, Q5 deve costare ~0,7 MB e non 3.")
     print(f"\nLa via canonica e' invece: python build/deploy.py --cloudflare")
 
 
