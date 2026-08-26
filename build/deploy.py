@@ -148,6 +148,8 @@ def main():
         import subprocess
         r = subprocess.run(["npx", "wrangler", "pages", "deploy", out,
                             "--project-name", args.progetto], cwd=RADICE)
+        print("\nVerifica le richieste Range sul sito pubblicato:")
+        print("  <dominio>/smoke.html   — Q5 deve costare ~0,9 MB e non 3")
         if r.returncode:
             raise SystemExit("wrangler ha fallito")
         return
@@ -173,14 +175,14 @@ def main():
 
     nome = repo.split(":")[-1].replace(".git", "")
     utente, prog = nome.split("/")
-    print(f"\nfatto. Attiva Pages una volta sola, in Settings → Pages:")
+    print(f"\nfatto (via storica gh-pages). Per servirlo, in Settings → Pages:")
     print(f"  Source: Deploy from a branch · Branch: {args.branch} · / (root)")
-    print(f"\nPoi l'indirizzo sara':")
-    print(f"  https://{utente.lower()}.github.io/{prog}/")
-    print(f"\nVerifica che Pages supporti le richieste Range, altrimenti")
+    print(f"  indirizzo: https://{utente.lower()}.github.io/{prog}/")
+    print(f"\nVerifica che l'host supporti le richieste Range, altrimenti")
     print(f"DuckDB scarichera' i file interi:")
     print(f"  https://{utente.lower()}.github.io/{prog}/smoke.html")
     print(f"Nel pannello di rete del browser, Q5 deve costare ~0,9 MB e non 3.")
+    print(f"\nLa via canonica e' invece: python build/deploy.py --cloudflare")
 
 
 if __name__ == "__main__":
