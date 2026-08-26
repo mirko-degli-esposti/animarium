@@ -3,28 +3,37 @@
 deploy.py — Animarium
 ======================
 
-Assembla la cartella pubblicabile e, opzionalmente, la spinge su GitHub Pages.
+Assembla la cartella pubblicabile e, opzionalmente, la pubblica.
 
-Perche' non basta committare il bundle su `main`
-------------------------------------------------
-I Parquet non si comprimono in delta: ogni rigenerazione aggiunge ~16 MB alla
-storia di git, per sempre. Dopo cinque cicli il repo pesa 100 MB e non si torna
-indietro senza riscrivere la storia.
+Due bersagli
+------------
+`--cloudflare` (canonico): consegna `deploy/` a Cloudflare Pages via
+`npx wrangler`. E' la via della release: il sito vive su animarium.it,
+i file restano statici, git non c'entra.
 
-Questo script invece pubblica su un ramo `gh-pages` **usa-e-getta**: la
-cartella `deploy/` viene inizializzata come repo a se' stante, spinta con
-`--force`, e il suo `.git` buttato via. Ogni pubblicazione e' un commit solo
-che sostituisce il precedente, quindi la storia non cresce mai e `main` resta
-pulito con codice e note.
+`--gh-pages` (storico, di riserva): pubblica su un ramo `gh-pages`
+**usa-e-getta**. Nato prima di Cloudflare e tenuto come ripiego.
+
+Perche' il bundle non si committa su `main`
+-------------------------------------------
+I Parquet non si comprimono in delta: ogni rigenerazione aggiungerebbe
+~16 MB alla storia di git, per sempre. Dopo cinque cicli il repo pesa
+100 MB e non si torna indietro senza riscrivere la storia. Con
+`--cloudflare` il problema non si pone (i file non passano da git); con
+`--gh-pages` la cartella `deploy/` viene inizializzata come repo a se'
+stante, spinta con `--force`, e il suo `.git` buttato via: ogni
+pubblicazione e' un commit solo che sostituisce il precedente, quindi la
+storia non cresce mai e `main` resta pulito con codice e note.
 
 Cosa finisce online
 -------------------
     index.html          il pannello (rinominato)
-    smoke.html          lo smoke test, per verificare che Pages supporti
+    smoke.html          lo smoke test, per verificare che l'host supporti
                         le richieste Range: senza, DuckDB scaricherebbe i
                         file interi e l'app sarebbe lenta senza dire perche'
     bundle/             Parquet, manifest, riferimenti, indice
-    .nojekyll           altrimenti Pages ignora i file che iniziano con _
+    .nojekyll           serve solo a GitHub Pages (ignora i file che
+                        iniziano con _); su Cloudflare e' inerte
 
 Il pannello cerca il bundle prima in `bundle/` e poi in `../bundle/`, quindi
 lo stesso file funziona sia in locale sia pubblicato.
@@ -32,8 +41,8 @@ lo stesso file funziona sia in locale sia pubblicato.
 Uso
 ---
     python build/deploy.py                 # assembla soltanto
-    python build/deploy.py --push          # assembla e pubblica
-    python build/deploy.py --push --repo git@github.com:tizio/Altro.git
+    python build/deploy.py --cloudflare    # assembla e pubblica (canonico)
+    python build/deploy.py --gh-pages      # assembla e pubblica sul ramo
 """
 
 from __future__ import annotations
@@ -72,9 +81,14 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--push", action="store_true")
+    ap.add_argument("--cloudflare", action="store_true",
+                    help="pubblica su Cloudflare Pages (via wrangler): la via canonica")
+    ap.add_argument("--progetto", default="animarium",
+                    help="nome del progetto Cloudflare Pages")
+    ap.add_argument("--gh-pages", dest="push", action="store_true",
+                    help="pubblica sul ramo gh-pages (via storica, non canonica)")
     ap.add_argument("--repo", default=None,
-                    help="URL del remoto; default: quello di origin")
+                    help="repo di destinazione per --gh-pages")
     ap.add_argument("--branch", default="gh-pages")
     ap.add_argument("--out", default="deploy")
     args = ap.parse_args()
@@ -130,11 +144,19 @@ def main():
         for p, n in grossi:
             print(f"  {p} {mb(n)}")
 
+    if args.cloudflare:
+        import subprocess
+        r = subprocess.run(["npx", "wrangler", "pages", "deploy", out,
+                            "--project-name", args.progetto], cwd=RADICE)
+        if r.returncode:
+            raise SystemExit("wrangler ha fallito")
+        return
+    
     if not args.push:
         print(f"\nPer provare in locale:")
         print(f"  python build/serve_range.py --dir {out}")
         print(f"  http://localhost:8000/index.html")
-        print(f"\nPer pubblicare: python build/deploy.py --push")
+        print(f"\nPer pubblicare: python build/deploy.py --cloudflare")
         return
 
     # --- pubblicazione ----------------------------------------------------
