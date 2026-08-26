@@ -10,9 +10,9 @@ battery with honest confidence bands, place individuals on a map, open the
 card of a single (non-existent) person. The whole state lives in the URL, so
 a view can be sent in one line and cited in a paper.
 
-Live: <https://animarium.pages.dev>. Eleven municipalities — the nine
+Live: <https://animarium.it>. Eleven municipalities — the nine
 provincial capitals of Emilia-Romagna, Brescia and Castenaso — about 1.9 M
-individuals, 0.9 M households, bundle ≈ 35 MB.
+individuals, 0.9 M households, bundle ≈ 37 MB.
 
 Animarium **consumes** populations, it does not generate them. GSP produces
 `popolazione_K*C_avq_full.csv`; Animarium turns it into a Parquet bundle and
@@ -34,7 +34,7 @@ report, Part I.7.
 someone else). No Python dependency on GSP is needed.
 
 ```bash
-git clone https://github.com/mirko-degli-esposti/Animarium && cd Animarium
+git clone https://github.com/mirko-degli-esposti/animarium && cd animarium
 # put the bundle in ./bundle/  (bundle/comuni.json + bundle/comuni/<codice>/…)
 python build/serve_range.py
 # open http://localhost:8000/build/pannello_marginali.html
@@ -66,13 +66,16 @@ enforced: no name, no street or civic number, coordinates randomised within
 the census section, `donor_id` dropped. What leaves the machine is what you
 see online.
 
-**Publishing** — the two commands always go together, because `deploy.py`
-copies the bundle from disk:
+**Publishing** — one command, which assembles `deploy/` from the bundle on
+disk and hands it to Wrangler, so that assembly and upload cannot drift
+apart:
 
 ```bash
-python build/deploy.py
-npx wrangler pages deploy deploy/ --project-name animarium --branch main
+python build/deploy.py --cloudflare
 ```
+
+(`--gh-pages` publishes to a throwaway branch instead: an earlier
+configuration, kept as a fallback.)
 
 ---
 
@@ -81,7 +84,7 @@ npx wrangler pages deploy deploy/ --project-name animarium --branch main
 ```
 build/                  Python (bundle chain, deploy, range server) + the viewer page
   pannello_marginali.html   the viewer: one file, hand-written, DuckDB-WASM from CDN
-  smoke_duckdb.html         byte-cost smoke test
+  smoke_duckdb.html    byte-cost smoke test (published as smoke.html: checks the host answers Range requests)
 bundle/                 generated, not versioned, rebuilt in one command
 deploy/                 generated, not versioned, what goes online
 note/                   design document (versioned), measurements, retractions
@@ -122,6 +125,7 @@ difference is compositional, and the panel says so.
 sampled individuals with deterministic jitter over a grey layer of the whole
 city; individuals are clickable and open the card, with the guarantee class of
 every attribute. Coordinates are those of the public regime.
+The cartographic base layer is off by default — the panel draws its own geometry — and switching on OpenStreetMap or CARTO is an explicit choice, labelled as an external service and attributed on the canvas. A self-hosted PMTiles layer is planned for v1.1.
 
 **Households** (ring 4): family nuclei with role, from the bundle.
 
