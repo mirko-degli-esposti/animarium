@@ -125,7 +125,7 @@ difference is compositional, and the panel says so.
 sampled individuals with deterministic jitter over a grey layer of the whole
 city; individuals are clickable and open the card, with the guarantee class of
 every attribute. Coordinates are those of the public regime.
-The cartographic base layer is off by default — the panel draws its own geometry — and switching on OpenStreetMap or CARTO is an explicit choice, labelled as an external service and attributed on the canvas. A self-hosted PMTiles layer is planned for v1.1.
+The cartographic base layer is off by default — the panel draws its own geometry. Switching on OpenStreetMap is an explicit choice, labelled as an external service and attributed on the canvas; CARTO support exists in the code but is currently disabled, since it now requires an API key.A self-hosted PMTiles layer is planned for v1.1.
 
 **Households** (ring 4): family nuclei with role, from the bundle.
 
