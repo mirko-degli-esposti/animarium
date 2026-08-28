@@ -109,7 +109,11 @@ def main():
     shutil.copy("build/pannello_marginali.html", os.path.join(out, "index.html"))
     if os.path.exists("build/smoke_duckdb.html"):
         shutil.copy("build/smoke_duckdb.html", os.path.join(out, "smoke.html"))
-    shutil.copytree(bundle, os.path.join(out, "bundle"))
+    # il tarball del dataset (>25 MiB) e' materiale d'archivio, non di viewer:
+    # Pages rifiuta file oltre 25 MiB, e i Parquet sono gia' serviti singolarmente.
+    # Casa canonica del pacchetto completo: Zenodo (DOI).
+    shutil.copytree(bundle, os.path.join(out, "bundle"),
+                    ignore=shutil.ignore_patterns("*.tar.gz"))
 
     # medie_nazionali.jsonsta arriva da build_bundle
     # ; se manca, il pannello non mostra le tacche di riferimento e lo
@@ -136,11 +140,12 @@ def main():
     print("  Ogni visitatore ne scarica ~2,5 MB: i blocchi non toccati")
     print("  non vengono mai letti (modello di costo, §7.2 del design).")
 
+    LIMITE_PAGES = 25 * 1024 * 1024   # Cloudflare Pages: file singoli max 25 MiB
     grossi = [(os.path.join(r, f), os.path.getsize(os.path.join(r, f)))
               for r, _, fs in os.walk(out) for f in fs
-              if os.path.getsize(os.path.join(r, f)) > 50 * 1024 * 1024]
+              if os.path.getsize(os.path.join(r, f)) > LIMITE_PAGES]
     if grossi:
-        print("\n[avviso] file oltre 50 MB: GitHub ne rifiuta oltre 100")
+        print("\n[avviso] file oltre 25 MiB: Cloudflare Pages li rifiuta")
         for p, n in grossi:
             print(f"  {p} {mb(n)}")
 
