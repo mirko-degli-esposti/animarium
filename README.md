@@ -164,9 +164,6 @@ were withdrawn are annotated as such in the design note, not removed.
 - Method for ring 1: *Scalable Maximum Entropy Population Synthesis via Persistent Contrastive Divergence*, arXiv:2603.27312 —
   code at `github.com/mirko-degli-esposti/maxent-popsynth-pcd`.
 
-Cite the technical report for the pipeline and the populations; `CITATION.cff`
-has the machine-readable form. Software snapshots and the open dataset are
-archived on Zenodo with DOIs (links added on release).
 
 ---
 
