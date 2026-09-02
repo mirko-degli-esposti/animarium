@@ -33,9 +33,17 @@ import pyarrow.parquet as pq
 # la voce piu' rilevante per il lavoro sulla comunicazione istituzionale.
 VAR_RIF = "PUNTIFI10_num"
 
+# Etichette come stanno nel parquet, verificate su Bologna (2/9/2026):
+# cittadinanza ITL/FRG (codici, non decodificati); istruzione con le
+# etichette del collasso di cs_build. Se cambiano, i marcatori escono
+# sbagliati SENZA errore (l'except e' muto): il sintomo e' una coropleta
+# uniforme o al 100%.
+ITALIANA = "ITL"
+LAUREA = ("laurea_o_its", "post_laurea")
 
 def geometria_e_neff(par):
-    """Baricentro del comune e numerosita' efficace su VAR_RIF.
+    """Baricentro del comune, numerosita' efficace su VAR_RIF, e i
+    marcatori demografici per la coropleta dell'atlante.
 
     Il baricentro si ricava dagli individui: non serve alcuna geometria
     esterna, ed e' il centro di massa della popolazione, non del territorio —
@@ -44,10 +52,17 @@ def geometria_e_neff(par):
     fuori = {}
     try:
         t = pq.read_table(par, columns=["lon", "lat"]).to_pandas()
-        fuori["lon"] = round(float(t.lon.mean()), 5)
-        fuori["lat"] = round(float(t.lat.mean()), 5)
+        lon, lat = float(t.lon.mean()), float(t.lat.mean())
+        # NaN non e' JSON valido (json.dump lo scrive comunque, e il
+        # viewer muore su .json()): un comune senza civici geolocalizzati
+        # semplicemente non ha baricentro, e preparaAtlante lo salta gia'
+        # col suo filtro `c.lon`.
+        if lon == lon and lat == lat:          # NaN != NaN
+            fuori["lon"] = round(lon, 5)
+            fuori["lat"] = round(lat, 5)
     except Exception:
         pass
+
     try:
         t = pq.read_table(par, columns=["donor_id", VAR_RIF]).to_pandas()
         v = t[t[VAR_RIF].notna()]
@@ -58,8 +73,29 @@ def geometria_e_neff(par):
                          "n_eff": round(ne),
                          "rapporto": round(len(v) / ne, 1),
                          "banda": round((len(v) / ne) ** 0.5, 1)}
+    except Exception:          # <-- questo mancava
+        pass
+
+    # Marcatori per la coropleta (design §4.8): la mappa colora la
+    # popolazione SINTETICA aggregata, non i dati ISTAT — se la geografia
+    # sociale che ne esce e' riconoscibile (Appennino vecchio, via Emilia
+    # istruita), la figura argomenta da sola. Stessa lettura a colonne
+    # degli altri blocchi: costo marginale trascurabile.
+    try:
+        t = pq.read_table(par, columns=["eta_anni", "cittadinanza",
+                                        "istruzione"]).to_pandas()
+        adulti = t[t.eta_anni >= 25]
+        fuori["marcatori"] = {
+            "pct_stranieri": round(100 * (t.cittadinanza != ITALIANA).mean(), 1),
+            "eta_mediana": round(float(t.eta_anni.median()), 1),
+            # denominatore 25+: la quota di laureati sulla popolazione
+            # totale confonde istruzione e struttura per eta'
+            "pct_laureati": round(100 * adulti.istruzione.isin(LAUREA).mean(), 1)
+                            if len(adulti) else None,
+        }
     except Exception:
         pass
+
     return fuori
 
 
@@ -122,7 +158,12 @@ def main():
     out = os.path.join(args.bundle, "comuni.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump({"generato": dt.datetime.now().isoformat(timespec="seconds"),
-                   "comuni": comuni}, f, ensure_ascii=False, indent=1)
+                   "comuni": comuni}, f, ensure_ascii=False, indent=1,allow_nan=False)
+
+         # allow_nan=False: NaN non e' JSON valido, ma json.dump lo scrive
+        # comunque per default — e il viewer muore su .json() con un errore
+        # che sembra tutt'altro (2/9/2026: 13 comuni senza baricentro hanno
+        # rotto l'indice intero). Meglio fallire QUI, dove si capisce.
 
     print(f"[info] scritto {out}")
     print()

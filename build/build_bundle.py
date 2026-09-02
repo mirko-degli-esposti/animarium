@@ -135,7 +135,18 @@ def main():
     args = ap.parse_args()
 
     G = carica_gsp()
-    comuni = args.comuni or sorted(G.COMUNI)
+        # Senza selezione: tutti i comuni del registro TRANNE quelli con
+    # `bundle: false` (Milano: 27 MB > il limite di 25 MB per file di
+    # Cloudflare Pages). Con selezione esplicita si costruisce comunque:
+    # l'esclusione e' una politica del bundle pubblicato, non un divieto.
+    comuni = args.comuni or [c for c in sorted(G.COMUNI)
+                             if G.COMUNI[c].get("bundle") is not False]
+    esclusi = [c for c in sorted(G.COMUNI)
+               if G.COMUNI[c].get("bundle") is False]
+    if esclusi and not args.comuni:
+        for c in esclusi:
+            print(f"  {c:<8} {G.COMUNI[c]['nome']:<20} escluso dal bundle "
+                  f"(bundle: false nel registro)")   
     
     print(f"[bundle] {len(comuni)} comuni · anno {args.anno} · radice {RADICE}")
     copia_medie(G)

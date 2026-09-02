@@ -1,0 +1,539 @@
+[bundle] 253 comuni · anno 2024 · radice /home/mirko/progetti/animarium
+[bundle] medie_nazionali.json gia' aggiornato
+
+  015146   Milano               K9C   ok                     parquet · manifest · riferimenti
+  017029   Brescia              K9C   ok                     parquet aggiornato · manifest · riferimenti
+  020030   Mantova              K6C   ok                     parquet · manifest · riferimenti
+  033002   Alseno               K6C   ok                     parquet · manifest · riferimenti
+  033005   Bobbio               K6C   ok                     parquet · manifest · riferimenti
+  033006   Borgonovo Val Tidone K6C   ok                     parquet · manifest · riferimenti
+  033007   Cadeo                K6C   ok                     parquet · manifest · riferimenti
+  033010   Caorso               K6C   ok                     parquet · manifest · riferimenti
+  033011   Carpaneto Piacentino K6C   ok                     parquet · manifest · riferimenti
+  033012   Castell'Arquato      K6C   ok                     parquet · manifest · riferimenti
+  033013   Castel San Giovanni  K6C   ok                     parquet · manifest · riferimenti
+  033014   Castelvetro Piacentino K6C   ok                     parquet · manifest · riferimenti
+  033018   Cortemaggiore        K6C   ok                     parquet · manifest · riferimenti
+  033021   Fiorenzuola d'Arda   K6C   ok                     parquet · manifest · riferimenti
+  033023   Gossolengo           K6C   ok                     parquet · manifest · riferimenti
+  033024   Gragnano Trebbiense  K6C   ok                     parquet · manifest · riferimenti
+  033026   Lugagnano Val d'Arda K6C   ok                     parquet · manifest · riferimenti
+  033027   Monticelli d'Ongina  K6C   ok                     parquet · manifest · riferimenti
+  033032   Piacenza             K9C   ok                     parquet aggiornato · manifest · riferimenti
+  033035   Podenzano            K6C   ok                     parquet · manifest · riferimenti
+  033036   Ponte dell'Olio      K6C   ok                     parquet · manifest · riferimenti
+  033037   Pontenure            K6C   ok                     parquet · manifest · riferimenti
+  033038   Rivergaro            K6C   ok                     parquet · manifest · riferimenti
+  033039   Rottofreno           K6C   ok                     parquet · manifest · riferimenti
+  033040   San Giorgio Piacentino K6C   ok                     parquet · manifest · riferimenti
+  033042   Sarmato              K6C   ok                     parquet · manifest · riferimenti
+  033044   Vernasca             K6C   ok                     parquet · manifest · riferimenti
+  033045   Vigolzone            K6C   ok                     parquet · manifest · riferimenti
+  034003   Bedonia              K6C   ok                     parquet · manifest · riferimenti
+  034006   Borgo Val di Taro    K6C   ok                     parquet · manifest · riferimenti
+  034007   Busseto              K6C   ok                     parquet · manifest · riferimenti
+  034009   Collecchio           K6C   ok                     parquet · manifest · riferimenti
+  034010   Colorno              K6C   ok                     parquet · manifest · riferimenti
+  034013   Felino               K6C   ok                     parquet · manifest · riferimenti
+  034014   Fidenza              K6C   ok                     parquet · manifest · riferimenti
+  034015   Fontanellato         K6C   ok                     parquet · manifest · riferimenti
+  034016   Fontevivo            K6C   ok                     parquet · manifest · riferimenti
+  034017   Fornovo di Taro      K6C   ok                     parquet · manifest · riferimenti
+  034018   Langhirano           K6C   ok                     parquet · manifest · riferimenti
+  034019   Lesignano de' Bagni  K6C   ok                     parquet · manifest · riferimenti
+  034020   Medesano             K6C   ok                     parquet · manifest · riferimenti
+  034023   Montechiarugolo      K6C   ok                     parquet · manifest · riferimenti
+  034024   Neviano degli Arduini K6C   ok                     parquet · manifest · riferimenti
+  034025   Noceto               K6C   ok                     parquet · manifest · riferimenti
+  034027   Parma                K9C   ok                     parquet · manifest · riferimenti
+  034031   Sala Baganza         K6C   ok                     parquet · manifest · riferimenti
+  034032   Salsomaggiore Terme  K6C   ok                     parquet · manifest · riferimenti
+  034033   San Secondo Parmense K6C   ok                     parquet · manifest · riferimenti
+  034036   Soragna              K6C   ok                     parquet · manifest · riferimenti
+  034041   Torrile              K6C   ok                     parquet · manifest · riferimenti
+  034042   Traversetolo         K6C   ok                     parquet · manifest · riferimenti
+  034049   Sissa Trecasali      K6C   ok                     parquet · manifest · riferimenti
+  034050   Polesine Zibello     K6C   ok                     parquet · manifest · riferimenti
+  034051   Sorbolo Mezzani      K6C   ok                     parquet · manifest · riferimenti
+  035001   Albinea              K6C   ok                     parquet · manifest · riferimenti
+  035002   Bagnolo in Piano     K6C   ok                     parquet · manifest · riferimenti
+  035003   Baiso                K6C   ok                     parquet · manifest · riferimenti
+  035004   Bibbiano             K6C   ok                     parquet · manifest · riferimenti
+  035005   Boretto              K6C   ok                     parquet · manifest · riferimenti
+  035006   Brescello            K6C   ok                     parquet · manifest · riferimenti
+  035008   Cadelbosco di Sopra  K6C   ok                     parquet · manifest · riferimenti
+  035009   Campagnola Emilia    K6C   ok                     parquet · manifest · riferimenti
+  035010   Campegine            K6C   ok                     parquet · manifest · riferimenti
+  035011   Carpineti            K6C   ok                     parquet · manifest · riferimenti
+  035012   Casalgrande          K6C   ok                     parquet · manifest · riferimenti
+  035013   Casina               K6C   ok                     parquet · manifest · riferimenti
+  035014   Castellarano         K6C   ok                     parquet · manifest · riferimenti
+  035015   Castelnovo di Sotto  K6C   ok                     parquet · manifest · riferimenti
+  035016   Castelnovo ne' Monti K6C   ok                     parquet · manifest · riferimenti
+  035017   Cavriago             K6C   ok                     parquet · manifest · riferimenti
+  035018   Canossa              K6C   ok                     parquet · manifest · riferimenti
+  035020   Correggio            K6C   ok                     parquet · manifest · riferimenti
+  035021   Fabbrico             K6C   ok                     parquet · manifest · riferimenti
+  035022   Gattatico            K6C   ok                     parquet · manifest · riferimenti
+  035023   Gualtieri            K6C   ok                     parquet · manifest · riferimenti
+  035024   Guastalla            K6C   ok                     parquet · manifest · riferimenti
+  035026   Luzzara              K6C   ok                     parquet · manifest · riferimenti
+  035027   Montecchio Emilia    K6C   ok                     parquet · manifest · riferimenti
+  035028   Novellara            K6C   ok                     parquet · manifest · riferimenti
+  035029   Poviglio             K6C   ok                     parquet · manifest · riferimenti
+  035030   Quattro Castella     K6C   ok                     parquet · manifest · riferimenti
+  035032   Reggiolo             K6C   ok                     parquet · manifest · riferimenti
+  035033   Reggio nell'Emilia   K9C   ok                     parquet aggiornato · manifest · riferimenti
+  035034   Rio Saliceto         K6C   ok                     parquet · manifest · riferimenti
+  035035   Rolo                 K6C   ok                     parquet · manifest · riferimenti
+  035036   Rubiera              K6C   ok                     parquet · manifest · riferimenti
+  035037   San Martino in Rio   K6C   ok                     parquet · manifest · riferimenti
+  035038   San Polo d'Enza      K6C   ok                     parquet · manifest · riferimenti
+  035039   Sant'Ilario d'Enza   K6C   ok                     parquet · manifest · riferimenti
+  035040   Scandiano            K6C   ok                     parquet · manifest · riferimenti
+  035041   Toano                K6C   ok                     parquet · manifest · riferimenti
+  035043   Vezzano sul Crostolo K6C   ok                     parquet · manifest · riferimenti
+  035044   Viano                K6C   ok                     parquet · manifest · riferimenti
+  035045   Villa Minozzo        K6C   ok                     parquet · manifest · riferimenti
+  035046   Ventasso             K6C   ok                     parquet · manifest · riferimenti
+  036001   Bastiglia            K6C   ok                     parquet · manifest · riferimenti
+  036002   Bomporto             K6C   ok                     parquet · manifest · riferimenti
+  036003   Campogalliano        K6C   ok                     parquet · manifest · riferimenti
+  036004   Camposanto           K6C   ok                     parquet · manifest · riferimenti
+  036005   Carpi                K6C   ok                     parquet · manifest · riferimenti
+  036006   Castelfranco Emilia  K6C   ok                     parquet · manifest · riferimenti
+  036007   Castelnuovo Rangone  K6C   ok                     parquet · manifest · riferimenti
+  036008   Castelvetro di Modena K6C   ok                     parquet · manifest · riferimenti
+  036009   Cavezzo              K6C   ok                     parquet · manifest · riferimenti
+  036010   Concordia sulla Secchia K6C   ok                     parquet · manifest · riferimenti
+  036012   Finale Emilia        K6C   ok                     parquet · manifest · riferimenti
+  036013   Fiorano Modenese     K6C   ok                     parquet · manifest · riferimenti
+  036015   Formigine            K6C   ok                     parquet · manifest · riferimenti
+  036017   Guiglia              K6C   ok                     parquet · manifest · riferimenti
+  036019   Maranello            K6C   ok                     parquet · manifest · riferimenti
+  036020   Marano sul Panaro    K6C   ok                     parquet · manifest · riferimenti
+  036021   Medolla              K6C   ok                     parquet · manifest · riferimenti
+  036022   Mirandola            K6C   ok                     parquet · manifest · riferimenti
+  036023   Modena               K9C   ok                     parquet aggiornato · manifest · riferimenti
+  036026   Montese              K6C   ok                     parquet · manifest · riferimenti
+  036027   Nonantola            K6C   ok                     parquet · manifest · riferimenti
+  036028   Novi di Modena       K6C   ok                     parquet · manifest · riferimenti
+  036030   Pavullo nel Frignano K6C   ok                     parquet · manifest · riferimenti
+  036033   Prignano sulla Secchia K6C   ok                     parquet · manifest · riferimenti
+  036034   Ravarino             K6C   ok                     parquet · manifest · riferimenti
+  036036   San Cesario sul Panaro K6C   ok                     parquet · manifest · riferimenti
+  036037   San Felice sul Panaro K6C   ok                     parquet · manifest · riferimenti
+  036038   San Possidonio       K6C   ok                     parquet · manifest · riferimenti
+  036039   San Prospero         K6C   ok                     parquet · manifest · riferimenti
+  036040   Sassuolo             K6C   ok                     parquet · manifest · riferimenti
+  036041   Savignano sul Panaro K6C   ok                     parquet · manifest · riferimenti
+  036042   Serramazzoni         K6C   ok                     parquet · manifest · riferimenti
+  036044   Soliera              K6C   ok                     parquet · manifest · riferimenti
+  036045   Spilamberto          K6C   ok                     parquet · manifest · riferimenti
+  036046   Vignola              K6C   ok                     parquet · manifest · riferimenti
+  036047   Zocca                K6C   ok                     parquet · manifest · riferimenti
+  037001   Anzola dell'Emilia   K6C   ok                     parquet · manifest · riferimenti
+  037002   Argelato             K6C   ok                     parquet · manifest · riferimenti
+  037003   Baricella            K6C   ok                     parquet · manifest · riferimenti
+  037005   Bentivoglio          K6C   ok                     parquet · manifest · riferimenti
+  037006   Bologna              K9C   ok                     parquet aggiornato · manifest · riferimenti
+  037007   Borgo Tossignano     K6C   ok                     parquet · manifest · riferimenti
+  037008   Budrio               K6C   ok                     parquet · manifest · riferimenti
+  037009   Calderara di Reno    K6C   ok                     parquet · manifest · riferimenti
+  037011   Casalecchio di Reno  K6C   ok                     parquet · manifest · riferimenti
+  037012   Casalfiumanese       K6C   ok                     parquet · manifest · riferimenti
+  037015   Castel di Casio      K6C   ok                     parquet · manifest · riferimenti
+  037016   Castel Guelfo di Bologna K6C   ok                     parquet · manifest · riferimenti
+  037017   Castello d'Argile    K6C   ok                     parquet · manifest · riferimenti
+  037019   Castel Maggiore      K6C   ok                     parquet · manifest · riferimenti
+  037020   Castel San Pietro Terme K6C   ok                     parquet · manifest · riferimenti
+  037021   Castenaso            K6C   ok                     parquet aggiornato · manifest · riferimenti
+  037022   Castiglione dei Pepoli K6C   ok                     parquet · manifest · riferimenti
+  037024   Crevalcore           K6C   ok                     parquet · manifest · riferimenti
+  037025   Dozza                K6C   ok                     parquet · manifest · riferimenti
+  037027   Gaggio Montano       K6C   ok                     parquet · manifest · riferimenti
+  037028   Galliera             K6C   ok                     parquet · manifest · riferimenti
+  037030   Granarolo dell'Emilia K6C   ok                     parquet · manifest · riferimenti
+  037031   Grizzana Morandi     K6C   ok                     parquet · manifest · riferimenti
+  037032   Imola                K6C   ok                     parquet · manifest · riferimenti
+  037034   Loiano               K6C   ok                     parquet · manifest · riferimenti
+  037035   Malalbergo           K6C   ok                     parquet · manifest · riferimenti
+  037036   Marzabotto           K6C   ok                     parquet · manifest · riferimenti
+  037037   Medicina             K6C   ok                     parquet · manifest · riferimenti
+  037038   Minerbio             K6C   ok                     parquet · manifest · riferimenti
+  037039   Molinella            K6C   ok                     parquet · manifest · riferimenti
+  037040   Monghidoro           K6C   ok                     parquet · manifest · riferimenti
+  037041   Monterenzio          K6C   ok                     parquet · manifest · riferimenti
+  037042   Monte San Pietro     K6C   ok                     parquet · manifest · riferimenti
+  037044   Monzuno              K6C   ok                     parquet · manifest · riferimenti
+  037045   Mordano              K6C   ok                     parquet · manifest · riferimenti
+  037046   Ozzano dell'Emilia   K6C   ok                     parquet · manifest · riferimenti
+  037047   Pianoro              K6C   ok                     parquet · manifest · riferimenti
+  037048   Pieve di Cento       K6C   ok                     parquet · manifest · riferimenti
+  037050   Sala Bolognese       K6C   ok                     parquet · manifest · riferimenti
+  037051   San Benedetto Val di Sambro K6C   ok                     parquet · manifest · riferimenti
+  037052   San Giorgio di Piano K6C   ok                     parquet · manifest · riferimenti
+  037053   San Giovanni in Persiceto K6C   ok                     parquet · manifest · riferimenti
+  037054   San Lazzaro di Savena K6C   ok                     parquet · manifest · riferimenti
+  037055   San Pietro in Casale K6C   ok                     parquet · manifest · riferimenti
+  037056   Sant'Agata Bolognese K6C   ok                     parquet · manifest · riferimenti
+  037057   Sasso Marconi        K6C   ok                     parquet · manifest · riferimenti
+  037059   Vergato              K6C   ok                     parquet · manifest · riferimenti
+  037060   Zola Predosa         K6C   ok                     parquet · manifest · riferimenti
+  037061   Valsamoggia          K6C   ok                     parquet · manifest · riferimenti
+  037062   Alto Reno Terme      K6C   ok                     parquet · manifest · riferimenti
+  038001   Argenta              K6C   ok                     parquet · manifest · riferimenti
+  038003   Bondeno              K6C   ok                     parquet · manifest · riferimenti
+  038004   Cento                K6C   ok                     parquet · manifest · riferimenti
+  038005   Codigoro             K6C   ok                     parquet · manifest · riferimenti
+  038006   Comacchio            K6C   ok                     parquet · manifest · riferimenti
+  038007   Copparo              K6C   ok                     parquet · manifest · riferimenti
+  038008   Ferrara              K6C   ok                     parquet aggiornato · manifest · riferimenti
+  038011   Lagosanto            K6C   ok                     parquet · manifest · riferimenti
+  038014   Mesola               K6C   ok                     parquet · manifest · riferimenti
+  038017   Ostellato            K6C   ok                     parquet · manifest · riferimenti
+  038018   Poggio Renatico      K6C   ok                     parquet · manifest · riferimenti
+  038019   Portomaggiore        K6C   ok                     parquet · manifest · riferimenti
+  038022   Vigarano Mainarda    K6C   ok                     parquet · manifest · riferimenti
+  038023   Voghiera             K6C   ok                     parquet · manifest · riferimenti
+  038025   Goro                 K6C   ok                     parquet · manifest · riferimenti
+  038027   Fiscaglia            K6C   ok                     parquet · manifest · riferimenti
+  038028   Terre del Reno       K6C   ok                     parquet · manifest · riferimenti
+  038029   Riva del Po          K6C   ok                     parquet · manifest · riferimenti
+  038030   Tresignana           K6C   ok                     parquet · manifest · riferimenti
+  039001   Alfonsine            K6C   ok                     parquet · manifest · riferimenti
+  039002   Bagnacavallo         K6C   ok                     parquet · manifest · riferimenti
+  039004   Brisighella          K6C   ok                     parquet · manifest · riferimenti
+  039006   Castel Bolognese     K6C   ok                     parquet · manifest · riferimenti
+  039007   Cervia               K6C   ok                     parquet · manifest · riferimenti
+  039008   Conselice            K6C   ok                     parquet · manifest · riferimenti
+  039009   Cotignola            K6C   ok                     parquet · manifest · riferimenti
+  039010   Faenza               K6C   ok                     parquet · manifest · riferimenti
+  039011   Fusignano            K6C   ok                     parquet · manifest · riferimenti
+  039012   Lugo                 K6C   ok                     parquet · manifest · riferimenti
+  039013   Massa Lombarda       K6C   ok                     parquet · manifest · riferimenti
+  039014   Ravenna              K9C   ok                     parquet aggiornato · manifest · riferimenti
+  039015   Riolo Terme          K6C   ok                     parquet · manifest · riferimenti
+  039016   Russi                K6C   ok                     parquet · manifest · riferimenti
+  039018   Solarolo             K6C   ok                     parquet · manifest · riferimenti
+  040001   Bagno di Romagna     K6C   ok                     parquet · manifest · riferimenti
+  040003   Bertinoro            K6C   ok                     parquet · manifest · riferimenti
+  040005   Castrocaro Terme e Terra del Sole K6C   ok                     parquet · manifest · riferimenti
+  040007   Cesena               K9C   ok                     parquet aggiornato · manifest · riferimenti
+  040008   Cesenatico           K6C   ok                     parquet · manifest · riferimenti
+  040009   Civitella di Romagna K6C   ok                     parquet · manifest · riferimenti
+  040012   Forlì                K9C   ok                     parquet aggiornato · manifest · riferimenti
+  040013   Forlimpopoli         K6C   ok                     parquet · manifest · riferimenti
+  040015   Gambettola           K6C   ok                     parquet · manifest · riferimenti
+  040016   Gatteo               K6C   ok                     parquet · manifest · riferimenti
+  040018   Longiano             K6C   ok                     parquet · manifest · riferimenti
+  040019   Meldola              K6C   ok                     parquet · manifest · riferimenti
+  040020   Mercato Saraceno     K6C   ok                     parquet · manifest · riferimenti
+  040022   Modigliana           K6C   ok                     parquet · manifest · riferimenti
+  040032   Predappio            K6C   ok                     parquet · manifest · riferimenti
+  040037   Roncofreddo          K6C   ok                     parquet · manifest · riferimenti
+  040041   San Mauro Pascoli    K6C   ok                     parquet · manifest · riferimenti
+  040043   Santa Sofia          K6C   ok                     parquet · manifest · riferimenti
+  040044   Sarsina              K6C   ok                     parquet · manifest · riferimenti
+  040045   Savignano sul Rubicone K6C   ok                     parquet · manifest · riferimenti
+  040046   Sogliano al Rubicone K6C   ok                     parquet · manifest · riferimenti
+  074017   San Vito dei Normanni nessuna popolazione _avq_full, saltato
+  099001   Bellaria-Igea Marina K6C   ok                     parquet · manifest · riferimenti
+  099002   Cattolica            K6C   ok                     parquet · manifest · riferimenti
+  099003   Coriano              K6C   ok                     parquet · manifest · riferimenti
+  099005   Misano Adriatico     K6C   ok                     parquet · manifest · riferimenti
+  099011   Morciano di Romagna  K6C   ok                     parquet · manifest · riferimenti
+  099013   Riccione             K6C   ok                     parquet · manifest · riferimenti
+  099014   Rimini               K9C   ok                     parquet aggiornato · manifest · riferimenti
+  099015   Saludecio            K6C   ok                     parquet · manifest · riferimenti
+  099016   San Clemente         K6C   ok                     parquet · manifest · riferimenti
+  099017   San Giovanni in Marignano K6C   ok                     parquet · manifest · riferimenti
+  099018   Santarcangelo di Romagna K6C   ok                     parquet · manifest · riferimenti
+  099020   Verucchio            K6C   ok                     parquet · manifest · riferimenti
+  099022   Maiolo               K6C   ok                     parquet · manifest · riferimenti
+  099023   Novafeltria          K6C   ok                     parquet · manifest · riferimenti
+  099028   Poggio Torriana      K6C   ok                     parquet · manifest · riferimenti
+  099029   Montescudo-Monte Colombo K6C   ok                     parquet · manifest · riferimenti
+
+[info] scritto bundle/comuni.json
+
+codice   nome                  individui  livello         zone tier  attr    copertura  banda     MB
+-------------------------------------------------------------------------------------------------------
+015146   Milano                1.371.499  municipi           9    0    11   67/333 20%  ×15.4  26.04
+037006   Bologna                 390.098  zone              18    2    11   67/333 20%  ×10.9   7.42
+017029   Brescia                 198.259  quartieri         33    1    11   67/333 20%   ×5.5   3.87
+034027   Parma                   198.121  quartieri         13    3    11   67/333 20%   ×7.3   3.81
+036023   Modena                  184.597  quartieri          4    0    11   67/333 20%   ×7.0   3.52
+035033   Reggio nell'Emilia      171.207  circoscrizioni     4    1    11   67/333 20%   ×6.6   3.31
+039014   Ravenna                 156.304  aree              10    1    11   67/333 20%   ×6.4   2.98
+099014   Rimini                  150.046  quartieri          6    0    11   67/333 20%   ×6.2   2.87
+038008   Ferrara                 129.391  —                  —    0     8    26/96 27%   ×6.1   2.42
+040012   Forlì                   117.050  quartieri         21    1    11   67/333 20%   ×5.5   2.22
+033032   Piacenza                102.887  quartieri          4    0    11   67/333 20%   ×5.2   1.98
+040007   Cesena                   96.066  quartieri         12    0    11   67/333 20%   ×5.0   1.83
+036005   Carpi                    72.523  —                  —    0     8    26/96 27%   ×4.3   1.36
+037032   Imola                    69.332  —                  —    0     8    26/96 27%   ×4.3   1.30
+039010   Faenza                   58.843  —                  —    0     8    26/96 27%   ×3.9   1.12
+020030   Mantova                  49.044  —                  —    0     8    26/96 27%   ×2.9   0.97
+036040   Sassuolo                 40.996  —                  —    0     8    26/96 27%   ×3.3   0.78
+038004   Cento                    35.391  —                  —    0     8    26/96 27%   ×3.1   0.69
+037011   Casalecchio di Reno      35.373  —                  —    0     8    26/96 27%   ×3.2   0.68
+036015   Formigine                34.478  —                  —    0     8    26/96 27%   ×3.1   0.67
+099013   Riccione                 34.465  —                  —    0     8    26/96 27%   ×3.1   0.67
+036006   Castelfranco Emilia      33.364  —                  —    0     8    26/96 27%   ×3.0   0.65
+037054   San Lazzaro di Save      32.699  —                  —    0     8    26/96 27%   ×3.2   0.63
+039012   Lugo                     32.225  —                  —    0     8    26/96 27%   ×3.0   0.63
+037061   Valsamoggia              31.925  —                  —    0     8    26/96 27%   ×3.0   0.63
+039007   Cervia                   28.964  —                  —    0     8    26/96 27%   ×2.9   0.58
+037053   San Giovanni in Per      27.960  —                  —    0     8    26/96 27%   ×2.8   0.56
+034014   Fidenza                  27.265  —                  —    0     8    26/96 27%   ×2.7   0.55
+040008   Cesenatico               26.008  —                  —    0     8    26/96 27%   ×2.8   0.50
+036046   Vignola                  25.999  —                  —    0     8    26/96 27%   ×2.7   0.52
+035040   Scandiano                25.853  —                  —    0     8    26/96 27%   ×2.7   0.52
+035020   Correggio                25.159  —                  —    0     8    26/96 27%   ×2.7   0.50
+036022   Mirandola                24.395  —                  —    0     8    26/96 27%   ×2.6   0.48
+099018   Santarcangelo di Ro      22.228  —                  —    0     8    26/96 27%   ×2.6   0.45
+038006   Comacchio                22.054  —                  —    0     8    26/96 27%   ×2.7   0.45
+038001   Argenta                  21.110  —                  —    0     8    26/96 27%   ×2.5   0.43
+037020   Castel San Pietro T      20.694  —                  —    0     8    26/96 27%   ×2.5   0.42
+034032   Salsomaggiore Terme      20.310  —                  —    0     8    26/96 27%   ×2.4   0.41
+099001   Bellaria-Igea Marin      19.453  —                  —    0     8    26/96 27%   ×2.4   0.39
+037060   Zola Predosa             19.369  —                  —    0     8    26/96 27%   ×2.4   0.38
+035012   Casalgrande              18.973  —                  —    0     8    26/96 27%   ×2.4   0.38
+037019   Castel Maggiore          18.496  —                  —    0     8    26/96 27%   ×2.4   0.36
+037008   Budrio                   18.365  —                  —    0     8    26/96 27%   ×2.4   0.37
+036030   Pavullo nel Frignan      18.268  —                  —    0     8    26/96 27%   ×2.3   0.36
+040045   Savignano sul Rubic      17.997  —                  —    0     8    26/96 27%   ×2.3   0.30
+037047   Pianoro                  17.746  —                  —    0     8    26/96 27%   ×2.4   0.35
+036019   Maranello                17.278  —                  —    0     8    26/96 27%   ×2.3   0.34
+036013   Fiorano Modenese         16.754  —                  —    0     8    26/96 27%   ×2.3   0.33
+037037   Medicina                 16.720  —                  —    0     8    26/96 27%   ×2.3   0.34
+099002   Cattolica                16.579  —                  —    0     8    26/96 27%   ×2.3   0.33
+039002   Bagnacavallo             16.480  —                  —    0     8    26/96 27%   ×2.3   0.33
+037021   Castenaso                16.357  —                  —    0     8    26/96 27%   ×2.2   0.32
+036027   Nonantola                16.110  —                  —    0     8    26/96 27%   ×2.2   0.33
+038007   Copparo                  15.739  —                  —    0     8    26/96 27%   ×2.3   0.32
+037039   Molinella                15.709  —                  —    0     8    26/96 27%   ×2.2   0.32
+036044   Soliera                  15.579  —                  —    0     8    26/96 27%   ×2.2   0.31
+035014   Castellarano             15.241  —                  —    0     8    26/96 27%   ×2.2   0.30
+036012   Finale Emilia            15.142  —                  —    0     8    26/96 27%   ×2.2   0.31
+036007   Castelnuovo Rangone      15.058  —                  —    0     8    26/96 27%   ×2.1   0.30
+033021   Fiorenzuola d'Arda       14.943  —                  —    0     8    26/96 27%   ×2.2   0.30
+037057   Sasso Marconi            14.868  —                  —    0     8    26/96 27%   ×2.2   0.30
+034009   Collecchio               14.774  —                  —    0     8    26/96 27%   ×2.1   0.30
+035036   Rubiera                  14.764  —                  —    0     8    26/96 27%   ×2.2   0.30
+035024   Guastalla                14.627  —                  —    0     8    26/96 27%   ×2.1   0.29
+099005   Misano Adriatico         14.162  —                  —    0     8    26/96 27%   ×2.1   0.29
+033013   Castel San Giovanni      14.139  —                  —    0     8    26/96 27%   ×2.1   0.29
+037046   Ozzano dell'Emilia       14.063  —                  —    0     8    26/96 27%   ×2.1   0.29
+037024   Crevalcore               13.981  —                  —    0     8    26/96 27%   ×2.1   0.29
+038003   Bondeno                  13.918  —                  —    0     8    26/96 27%   ×2.1   0.29
+037009   Calderara di Reno        13.690  —                  —    0     8    26/96 27%   ×2.1   0.28
+034025   Noceto                   13.306  —                  —    0     8    26/96 27%   ×2.1   0.27
+035028   Novellara                13.247  —                  —    0     8    26/96 27%   ×2.1   0.27
+035030   Quattro Castella         13.238  —                  —    0     8    26/96 27%   ×2.1   0.27
+040013   Forlimpopoli             13.075  —                  —    0     8    26/96 27%   ×2.0   0.27
+034051   Sorbolo Mezzani          12.989  —                  —    0     8    26/96 27%   ×2.1   0.27
+036045   Spilamberto              12.945  —                  —    0     8    26/96 27%   ×2.0   0.27
+037055   San Pietro in Casal      12.929  —                  —    0     8    26/96 27%   ×2.0   0.26
+037030   Granarolo dell'Emil      12.915  —                  —    0     8    26/96 27%   ×2.1   0.26
+037001   Anzola dell'Emilia       12.347  —                  —    0     8    26/96 27%   ×2.0   0.26
+040041   San Mauro Pascoli        12.295  —                  —    0     8    26/96 27%   ×2.0   0.25
+033039   Rottofreno               12.286  —                  —    0     8    26/96 27%   ×2.0   0.21
+039016   Russi                    12.285  —                  —    0     8    26/96 27%   ×2.0   0.26
+038019   Portomaggiore            11.996  —                  —    0     8    26/96 27%   ×2.0   0.25
+039001   Alfonsine                11.557  —                  —    0     8    26/96 27%   ×2.0   0.24
+035039   Sant'Ilario d'Enza       11.379  —                  —    0     8    26/96 27%   ×1.9   0.24
+034023   Montechiarugolo          11.252  —                  —    0     8    26/96 27%   ×1.9   0.24
+040003   Bertinoro                11.089  —                  —    0     8    26/96 27%   ×1.9   0.23
+036008   Castelvetro di Mode      11.078  —                  —    0     8    26/96 27%   ×1.9   0.23
+038005   Codigoro                 11.037  —                  —    0     8    26/96 27%   ×2.0   0.23
+034018   Langhirano               10.889  —                  —    0     8    26/96 27%   ×1.9   0.23
+036037   San Felice sul Pana      10.827  —                  —    0     8    26/96 27%   ×1.9   0.23
+040015   Gambettola               10.816  —                  —    0     8    26/96 27%   ×1.9   0.23
+037042   Monte San Pietro         10.813  —                  —    0     8    26/96 27%   ×2.0   0.22
+034020   Medesano                 10.755  —                  —    0     8    26/96 27%   ×1.9   0.23
+039013   Massa Lombarda           10.746  —                  —    0     8    26/96 27%   ×1.9   0.23
+035008   Cadelbosco di Sopra      10.720  —                  —    0     8    26/96 27%   ×1.9   0.23
+035027   Montecchio Emilia        10.464  —                  —    0     8    26/96 27%   ×1.9   0.22
+099003   Coriano                  10.455  —                  —    0     8    26/96 27%   ×1.9   0.22
+035016   Castelnovo ne' Mont      10.345  —                  —    0     8    26/96 27%   ×1.9   0.22
+036002   Bomporto                 10.261  —                  —    0     8    26/96 27%   ×1.9   0.22
+035004   Bibbiano                 10.221  —                  —    0     8    26/96 27%   ×1.9   0.22
+036028   Novi di Modena           10.165  —                  —    0     8    26/96 27%   ×1.9   0.22
+038028   Terre del Reno           10.142  —                  —    0     8    26/96 27%   ×1.9   0.21
+099020   Verucchio                10.058  —                  —    0     8    26/96 27%   ×1.9   0.22
+040019   Meldola                   9.967  —                  —    0     8    26/96 27%   ×1.9   0.21
+035017   Cavriago                  9.873  —                  —    0     8    26/96 27%   ×1.8   0.21
+038018   Poggio Renatico           9.760  —                  —    0     8    26/96 27%   ×1.9   0.21
+034042   Traversetolo              9.664  —                  —    0     8    26/96 27%   ×1.8   0.21
+037002   Argelato                  9.647  —                  —    0     8    26/96 27%   ×1.9   0.21
+039008   Conselice                 9.637  —                  —    0     8    26/96 27%   ×1.8   0.21
+036041   Savignano sul Panar       9.595  —                  —    0     8    26/96 27%   ×1.8   0.21
+035002   Bagnolo in Piano          9.583  —                  —    0     8    26/96 27%   ×1.8   0.21
+039006   Castel Bolognese          9.550  —                  —    0     8    26/96 27%   ×1.8   0.20
+037052   San Giorgio di Pian       9.503  —                  —    0     8    26/96 27%   ×1.8   0.20
+040016   Gatteo                    9.416  —                  —    0     8    26/96 27%   ×1.8   0.20
+099017   San Giovanni in Mar       9.410  —                  —    0     8    26/96 27%   ×1.8   0.20
+035032   Reggiolo                  9.243  —                  —    0     8    26/96 27%   ×1.8   0.19
+037035   Malalbergo                9.208  —                  —    0     8    26/96 27%   ×1.8   0.20
+034013   Felino                    9.155  —                  —    0     8    26/96 27%   ×1.8   0.20
+033035   Podenzano                 9.086  —                  —    0     8    26/96 27%   ×1.8   0.19
+034010   Colorno                   9.080  —                  —    0     8    26/96 27%   ×1.8   0.20
+037038   Minerbio                  8.949  —                  —    0     8    26/96 27%   ×1.8   0.19
+035001   Albinea                   8.887  —                  —    0     8    26/96 27%   ×1.8   0.19
+036042   Serramazzoni              8.813  —                  —    0     8    26/96 27%   ×1.8   0.19
+035015   Castelnovo di Sotto       8.599  —                  —    0     8    26/96 27%   ×1.8   0.19
+035026   Luzzara                   8.555  —                  —    0     8    26/96 27%   ×1.8   0.18
+036003   Campogalliano             8.538  —                  —    0     8    26/96 27%   ×1.8   0.19
+038027   Fiscaglia                 8.461  —                  —    0     8    26/96 27%   ×1.9   0.19
+037050   Sala Bolognese            8.413  —                  —    0     8    26/96 27%   ×1.8   0.18
+036010   Concordia sulla Sec       8.327  —                  —    0     8    26/96 27%   ×1.8   0.18
+035037   San Martino in Rio        8.237  —                  —    0     8    26/96 27%   ×1.7   0.18
+033006   Borgonovo Val Tidon       8.227  —                  —    0     8    26/96 27%   ×1.7   0.18
+039011   Fusignano                 8.159  —                  —    0     8    26/96 27%   ×1.8   0.18
+034049   Sissa Trecasali           7.901  —                  —    0     8    26/96 27%   ×1.7   0.17
+034041   Torrile                   7.743  —                  —    0     8    26/96 27%   ×1.7   0.17
+033011   Carpaneto Piacentin       7.717  —                  —    0     8    26/96 27%   ×1.7   0.17
+038022   Vigarano Mainarda         7.658  —                  —    0     8    26/96 27%   ×1.7   0.17
+037059   Vergato                   7.645  —                  —    0     8    26/96 27%   ×1.7   0.17
+038029   Riva del Po               7.425  —                  —    0     8    26/96 27%   ×1.8   0.17
+039009   Cotignola                 7.367  —                  —    0     8    26/96 27%   ×1.7   0.16
+037056   Sant'Agata Bolognes       7.351  —                  —    0     8    26/96 27%   ×1.7   0.16
+037048   Pieve di Cento            7.326  —                  —    0     8    26/96 27%   ×1.7   0.16
+040018   Longiano                  7.270  —                  —    0     8    26/96 27%   ×1.7   0.16
+099011   Morciano di Romagna       7.183  —                  —    0     8    26/96 27%   ×1.7   0.16
+036009   Cavezzo                   7.182  —                  —    0     8    26/96 27%   ×1.7   0.16
+039004   Brisighella               7.172  —                  —    0     8    26/96 27%   ×1.7   0.16
+037003   Baricella                 7.129  —                  —    0     8    26/96 27%   ×1.7   0.16
+033038   Rivergaro                 7.121  —                  —    0     8    26/96 27%   ×1.7   0.16
+035029   Poviglio                  7.111  —                  —    0     8    26/96 27%   ×1.7   0.16
+034015   Fontanellato              7.097  —                  —    0     8    26/96 27%   ×1.6   0.16
+037062   Alto Reno Terme           7.050  —                  —    0     8    26/96 27%   ×1.7   0.16
+099023   Novafeltria               6.990  —                  —    0     8    26/96 27%   ×1.7   0.13
+038030   Tresignana                6.986  —                  —    0     8    26/96 27%   ×1.7   0.16
+099029   Montescudo-Monte Co       6.880  —                  —    0     8    26/96 27%   ×1.7   0.16
+037036   Marzabotto                6.871  —                  —    0     8    26/96 27%   ×1.7   0.16
+040020   Mercato Saraceno          6.837  —                  —    0     8    26/96 27%   ×1.7   0.16
+034007   Busseto                   6.821  —                  —    0     8    26/96 27%   ×1.6   0.13
+035021   Fabbrico                  6.788  —                  —    0     8    26/96 27%   ×1.6   0.15
+034006   Borgo Val di Taro         6.748  —                  —    0     8    26/96 27%   ×1.7   0.15
+033037   Pontenure                 6.628  —                  —    0     8    26/96 27%   ×1.6   0.13
+037017   Castello d'Argile         6.626  —                  —    0     8    26/96 27%   ×1.7   0.15
+036036   San Cesario sul Pan       6.583  —                  —    0     8    26/96 27%   ×1.6   0.15
+037025   Dozza                     6.544  —                  —    0     8    26/96 27%   ×1.6   0.15
+040005   Castrocaro Terme e        6.449  —                  —    0     8    26/96 27%   ×1.6   0.14
+038014   Mesola                    6.417  —                  —    0     8    26/96 27%   ×1.7   0.15
+036021   Medolla                   6.416  —                  —    0     8    26/96 27%   ×1.6   0.15
+037044   Monzuno                   6.414  —                  —    0     8    26/96 27%   ×1.6   0.15
+036034   Ravarino                  6.307  —                  —    0     8    26/96 27%   ×1.6   0.15
+040032   Predappio                 6.284  —                  —    0     8    26/96 27%   ×1.6   0.15
+035023   Gualtieri                 6.281  —                  —    0     8    26/96 27%   ×1.6   0.14
+036039   San Prospero              6.165  —                  —    0     8    26/96 27%   ×1.6   0.14
+035038   San Polo d'Enza           6.134  —                  —    0     8    26/96 27%   ×1.6   0.14
+037041   Monterenzio               6.110  —                  —    0     8    26/96 27%   ×1.6   0.14
+035034   Rio Saliceto              6.050  —                  —    0     8    26/96 27%   ×1.6   0.14
+033007   Cadeo                     6.003  —                  —    0     8    26/96 27%   ×1.6   0.14
+034017   Fornovo di Taro           5.981  —                  —    0     8    26/96 27%   ×1.6   0.12
+034031   Sala Baganza              5.949  —                  —    0     8    26/96 27%   ×1.6   0.14
+034033   San Secondo Parmens       5.872  —                  —    0     8    26/96 27%   ×1.6   0.14
+099016   San Clemente              5.795  —                  —    0     8    26/96 27%   ×1.6   0.14
+039015   Riolo Terme               5.785  —                  —    0     8    26/96 27%   ×1.6   0.14
+037005   Bentivoglio               5.777  —                  —    0     8    26/96 27%   ×1.6   0.14
+035022   Gattatico                 5.716  —                  —    0     8    26/96 27%   ×1.6   0.14
+033023   Gossolengo                5.700  —                  —    0     8    26/96 27%   ×1.6   0.13
+037028   Galliera                  5.629  —                  —    0     8    26/96 27%   ×1.5   0.13
+038017   Ostellato                 5.583  —                  —    0     8    26/96 27%   ×1.6   0.13
+040001   Bagno di Romagna          5.579  —                  —    0     8    26/96 27%   ×1.5   0.13
+035006   Brescello                 5.575  —                  —    0     8    26/96 27%   ×1.5   0.13
+033040   San Giorgio Piacent       5.559  —                  —    0     8    26/96 27%   ×1.6   0.13
+035009   Campagnola Emilia         5.538  —                  —    0     8    26/96 27%   ×1.5   0.13
+034016   Fontevivo                 5.466  —                  —    0     8    26/96 27%   ×1.5   0.13
+037022   Castiglione dei Pep       5.462  —                  —    0     8    26/96 27%   ×1.5   0.13
+035010   Campegine                 5.351  —                  —    0     8    26/96 27%   ×1.5   0.13
+033014   Castelvetro Piacent       5.336  —                  —    0     8    26/96 27%   ×1.5   0.13
+035005   Boretto                   5.314  —                  —    0     8    26/96 27%   ×1.5   0.12
+036020   Marano sul Panaro         5.283  —                  —    0     8    26/96 27%   ×1.5   0.13
+033027   Monticelli d'Ongina       5.170  —                  —    0     8    26/96 27%   ×1.5   0.12
+099028   Poggio Torriana           5.144  —                  —    0     8    26/96 27%   ×1.5   0.12
+034019   Lesignano de' Bagni       5.124  —                  —    0     8    26/96 27%   ×1.5   0.12
+037027   Gaggio Montano            4.835  —                  —    0     8    26/96 27%   ×1.5   0.12
+033010   Caorso                    4.767  —                  —    0     8    26/96 27%   ×1.5   0.10
+034036   Soragna                   4.751  —                  —    0     8    26/96 27%   ×1.5   0.10
+033002   Alseno                    4.728  —                  —    0     8    26/96 27%   ×1.5   0.12
+036047   Zocca                     4.702  —                  —    0     8    26/96 27%   ×1.5   0.12
+033036   Ponte dell'Olio           4.672  —                  —    0     8    26/96 27%   ×1.5   0.10
+033012   Castell'Arquato           4.664  —                  —    0     8    26/96 27%   ×1.5   0.12
+038011   Lagosanto                 4.662  —                  —    0     8    26/96 27%   ×1.5   0.11
+033018   Cortemaggiore             4.640  —                  —    0     8    26/96 27%   ×1.5   0.10
+037045   Mordano                   4.576  —                  —    0     8    26/96 27%   ×1.5   0.11
+033024   Gragnano Trebbiense       4.573  —                  —    0     8    26/96 27%   ×1.4   0.11
+035013   Casina                    4.555  —                  —    0     8    26/96 27%   ×1.5   0.11
+037034   Loiano                    4.510  —                  —    0     8    26/96 27%   ×1.5   0.11
+037016   Castel Guelfo di Bo       4.506  —                  —    0     8    26/96 27%   ×1.5   0.11
+039018   Solarolo                  4.406  —                  —    0     8    26/96 27%   ×1.4   0.11
+035043   Vezzano sul Crostol       4.384  —                  —    0     8    26/96 27%   ×1.5   0.11
+040022   Modigliana                4.297  —                  —    0     8    26/96 27%   ×1.4   0.11
+036001   Bastiglia                 4.237  —                  —    0     8    26/96 27%   ×1.4   0.11
+037051   San Benedetto Val d       4.216  —                  —    0     8    26/96 27%   ×1.5   0.11
+036017   Guiglia                   4.174  —                  —    0     8    26/96 27%   ×1.4   0.11
+035041   Toano                     4.173  —                  —    0     8    26/96 27%   ×1.5   0.10
+033045   Vigolzone                 4.162  —                  —    0     8    26/96 27%   ×1.4   0.10
+040043   Santa Sofia               4.003  —                  —    0     8    26/96 27%   ×1.4   0.10
+035035   Rolo                      3.992  —                  —    0     8    26/96 27%   ×1.4   0.10
+033026   Lugagnano Val d'Ard       3.928  —                  —    0     8    26/96 27%   ×1.4   0.10
+037031   Grizzana Morandi          3.928  —                  —    0     8    26/96 27%   ×1.4   0.10
+035011   Carpineti                 3.901  —                  —    0     8    26/96 27%   ×1.4   0.10
+035046   Ventasso                  3.898  —                  —    0     8    26/96 27%   ×1.4   0.10
+037040   Monghidoro                3.873  —                  —    0     8    26/96 27%   ×1.4   0.10
+036033   Prignano sulla Secc       3.809  —                  —    0     8    26/96 27%   ×1.4   0.10
+035018   Canossa                   3.759  —                  —    0     8    26/96 27%   ×1.4   0.10
+040009   Civitella di Romagn       3.643  —                  —    0     8    26/96 27%   ×1.4   0.10
+038023   Voghiera                  3.581  —                  —    0     8    26/96 27%   ×1.4   0.08
+035045   Villa Minozzo             3.519  —                  —    0     8    26/96 27%   ×1.4   0.09
+036038   San Possidonio            3.487  —                  —    0     8    26/96 27%   ×1.4   0.09
+034024   Neviano degli Ardui       3.455  —                  —    0     8    26/96 27%   ×1.4   0.09
+040037   Roncofreddo               3.453  —                  —    0     8    26/96 27%   ×1.4   0.09
+038025   Goro                      3.436  —                  —    0     8    26/96 27%   ×1.5   0.09
+035044   Viano                     3.417  —                  —    0     8    26/96 27%   ×1.4   0.09
+033005   Bobbio                    3.412  —                  —    0     8    26/96 27%   ×1.4   0.09
+037012   Casalfiumanese            3.382  —                  —    0     8    26/96 27%   ×1.4   0.09
+040044   Sarsina                   3.337  —                  —    0     8    26/96 27%   ×1.4   0.09
+037015   Castel di Casio           3.322  —                  —    0     8    26/96 27%   ×1.4   0.09
+036026   Montese                   3.307  —                  —    0     8    26/96 27%   ×1.4   0.09
+036004   Camposanto                3.296  —                  —    0     8    26/96 27%   ×1.3   0.09
+035003   Baiso                     3.227  —                  —    0     8    26/96 27%   ×1.4   0.09
+037007   Borgo Tossignano          3.187  —                  —    0     8    26/96 27%   ×1.4   0.08
+040046   Sogliano al Rubicon       3.159  —                  —    0     8    26/96 27%   ×1.3   0.09
+099015   Saludecio                 3.153  —                  —    0     8    26/96 27%   ×1.3   0.09
+034003   Bedonia                   3.122  —                  —    0     8    26/96 27%   ×1.4   0.09
+034050   Polesine Zibello          3.120  —                  —    0     8    26/96 27%   ×1.4   0.07
+033042   Sarmato                   2.931  —                  —    0     8    26/96 27%   ×1.3   0.07
+033044   Vernasca                  2.014  —                  —    0     8    26/96 27%   ×1.2   0.06
+099022   Maiolo                      799  —                  —    0     8    26/96 27%   ×1.1   0.04
+
+  I CONTEGGI di copertura non sono confrontabili fra livelli: il
+  denominatore e' il numero di combinazioni interrogabili, che con
+  sei variabili vale 96 e con nove 333. Le PERCENTUALI si', e su un
+  comune non articolato escono piu' alte perche' ci sono meno
+  incroci non vincolati.
+
+  `banda` e' sqrt(n/n_eff) su PUNTIFI10: quante
+  volte l'intervallo di confidenza onesto e' piu' largo di quello
+  ingenuo. Cresce con la popolazione, non con la qualita': un
+  comune piccolo non satura il pool di donatori, quindi ogni
+  donatore porta ancora informazione quasi indipendente.
+
+[bundle] 252/253 comuni in 474 s
+
+  074017   San Vito dei Normanni sorgente assente
+
+  Un comune che fallisce non blocca gli altri: il bundle e'
+  parziale ma coerente, e l'indice elenca solo cio' che c'e'.
+
+  Livelli presenti nel bundle: K6C ×241, K9C ×11
+  Il pannello si costruisce dal manifest, quindi non nomina mai
+  gli attributi che un livello non ha.
+
+  Per pubblicare:  python build/deploy.py  &&  npx wrangler pages deploy deploy/ --project-name animarium --branch main
+  I due comandi vanno in coppia: deploy.py copia il bundle da disco.

@@ -286,6 +286,13 @@
       <!-- <option value="carto">base chiara (servizio esterno: CARTO)</option> -->
       <option value="osm">OpenStreetMap (servizio esterno)</option>
     </select>
+    <select id="indicatore">
+      <option value="individui" selected>popolazione</option>
+      <option value="pct_stranieri">stranieri %</option>
+      <option value="eta_mediana">eta' mediana</option>
+      <option value="pct_laureati">laureati (25+) %</option>
+      <option value="banda">banda n/n_eff</option>
+    </select>
   </div>
   <canvas id="atlante"></canvas>
   <div class="atl-nota" id="atlNota"></div>
@@ -378,6 +385,10 @@ let vista = null, ultimoDati = null, ultimaQuota = 0;
 let fiduciaOn = false, ordineFid = null, ultimoFid = null;
 let atlanteOn = false, INDICE = null, hitAtl = null, vistaAtl = null;
 let nucleiOn = false, RIF_NUC = null, ultimoNuc = null;
+/* atlante: poligoni comunali ER (coropleta) e lookup per codice.
+   Attenzione: `geo` minuscolo, piu' sopra, e' un'altra cosa — la geometria
+   della mappa del comune aperto. */
+let GEO = null, INDICE_BY_COD = {}, hitPoly = null;
 
 function avviso(cls, html) {
   const d = document.createElement("div");
@@ -424,6 +435,23 @@ function separa(nodi, giri = 60) {
   return nodi;
 }
 
+/* L'indicatore vive in tre posti del record: `individui` in cima,
+   `neff.banda` dal calcolo AVQ, il resto sotto `marcatori` (build_indice). */
+function valoreInd(k, ind) {
+  if (ind === "individui") return k.individui;
+  if (ind === "banda") return k.neff ? k.neff.banda : null;
+  return k.marcatori ? k.marcatori[ind] : null;
+}
+
+/* Scala sequenziale sull'accento della palette: una tinta sola, come il
+   resto dell'interfaccia. Il minimo non e' trasparente (.10) perche' un
+   comune coperto col valore piu' basso deve comunque distinguersi dal
+   grigio dei non coperti (.05). */
+function scalaColore(t) {
+  t = Math.max(0, Math.min(1, t));
+  return `rgba(124,74,45,${.10 + .62 * t})`;
+}
+
 function preparaAtlante(w, h) {
   const dentro = INDICE.comuni.filter(
     (c) => c.lon && (c.regione || "").startsWith("emilia"));
@@ -462,11 +490,64 @@ function disegnaAtlante() {
   const maxPop = Math.max(...INDICE.comuni.map((x) => x.individui));
   const raggio = (n) => R_MIN + (R_MAX - R_MIN) * Math.sqrt(n / maxPop);
 
+  /* Coropleta dei 330 comuni ER (bundle/geo/er_comuni.json, da
+     build/geo_comuni.py). Rovescia il messaggio dei dischi: non piu'
+     "undici su 328" ma la copertura come oggetto — e il grigio dice il
+     limite, che resta informazione quanto la presenza (§4.8). Nessuna
+     libreria di mappe: gli stessi px/py dei dischi applicati a un anello
+     di coordinate. Path2D perche' isPointInPath risolva il clic senza
+     scrivere un point-in-polygon. Va PRIMA dei dischi: quelli stanno
+     sopra e restano leggibili. */
+  hitPoly = [];
+  if (GEO) {
+    const ind = $("indicatore") ? $("indicatore").value : "individui";
+    const vals = INDICE.comuni.map((k) => valoreInd(k, ind))
+                              .filter((v) => v != null && isFinite(v));
+    /* Scala per RANGO, non lineare: su popolazione Bologna (390.098)
+       contro Zerba (74) schiaccerebbe il 99% dei comuni nel primo 2%
+       della scala, tutti dello stesso beige. Il rango mostra la
+       geografia RELATIVA, che e' quello che una coropleta deve dire;
+       il valore assoluto sta nella scheda al clic. */
+    const ordinati = [...vals].sort((a, b) => a - b);
+    const rango = (v) => ordinati.length < 2 ? .5
+      : ordinati.findIndex((x) => x >= v) / (ordinati.length - 1);
+    for (const f of GEO.features) {
+      const k = INDICE_BY_COD[f.properties.pro_com];
+      const v = k ? valoreInd(k, ind) : null;
+      const P = new Path2D();
+      // Polygon: [anello][punto] · MultiPolygon: [parte][anello][punto]
+      // (11 su 330 in ER: costiere ed exclave)
+      const parti = f.geometry.type === "Polygon"
+        ? [f.geometry.coordinates] : f.geometry.coordinates;
+      for (const parte of parti)
+        for (const anello of parte)
+          anello.forEach(([lon, lat], i) => i
+            ? P.lineTo(px(lon), py(lat))
+            : P.moveTo(px(lon), py(lat)));
+      P.closePath();
+      g.fillStyle = v == null
+        ? "rgba(27,26,23,.05)"                    // fuori dataset: grigio
+        : scalaColore(rango(v));
+      g.fill(P);
+      // il comune aperto si riconosce dal contorno, non da un disco
+      const qui = k && k.codice === COMUNE;
+      g.strokeStyle = qui ? "#1b1a17" : "rgba(27,26,23,.13)";
+      g.lineWidth = qui ? 2 : .4;
+      g.stroke(P);
+      if (k) hitPoly.push({ P, cod: k.codice });  // clic solo sui coperti
+    }
+  }
+
   hitAtl = [];
   g.font = "11px ui-sans-serif, sans-serif";
   g.textAlign = "center";
 
-  const nodi = separa(vistaAtl.dentro.map((k) => ({
+  /* Con la coropleta i dischi ER sono ridondanti e illeggibili a 238: il
+     colore dice il valore, il poligono dice il confine, il contorno spesso
+     dice dove siamo. Restano SOLO le pastiglie fuori regione (che poligoni
+     non ne hanno in questa inquadratura). Senza GeoJSON si torna ai dischi:
+     il viewer degrada, non si rompe. */
+  const nodi = GEO ? [] : separa(vistaAtl.dentro.map((k) => ({
     k, x: px(k.lon), y: py(k.lat),
     x0: px(k.lon), y0: py(k.lat), r: raggio(k.individui),
   })));
@@ -521,20 +602,36 @@ function disegnaAtlante() {
     g.textAlign = "center";
   }
 
-  const n = INDICE.comuni.length;
+  /* Il messaggio si e' rovesciato con la v2: non piu' "undici su 328,
+     l'assenza e' informazione", ma la copertura come oggetto — con il
+     grigio che continua a dire il limite, e adesso lo dice per confini
+     invece che per assenza di dischi. */
+  const nER = INDICE.comuni.filter(
+    (k) => (k.regione || "").startsWith("emilia")).length;
+  const etich = { individui: "popolazione", pct_stranieri: "quota di stranieri",
+    eta_mediana: "eta' mediana", pct_laureati: "laureati fra i 25+",
+    banda: "banda n/n_eff" };
+  const ind2 = $("indicatore") ? $("indicatore").value : "individui";
   $("atlNota").innerHTML =
-    `<b>${n} comuni</b> su 328 in Emilia-Romagna` +
+    `<b>${nER} comuni</b> su 330 in Emilia-Romagna` +
     (fuori.length ? `, piu' ${fuori.map((k) => k.nome).join(", ")} ` +
       `fuori regione — pool AVQ diverso, quindi <b>n_eff</b> diverso` : "") +
-    `. Area del cerchio proporzionale alla popolazione; i dischi che si ` +
-    `sovrapporrebbero sono scostati, con una lineetta alla posizione vera. ` +
-    `Clicca per la scheda.`;
+    `. Colore: <b>${etich[ind2] || ind2}</b> della popolazione sintetica, ` +
+    `in scala di rango. In grigio i comuni sotto la soglia di inclusione ` +
+    `(meno di 3.000 abitanti: il campione sarebbe piu' piccolo del ` +
+    `supporto del modello). Clicca per la scheda.`;
 }
 
 function cartaComune(cod) {
   const k = INDICE.comuni.find((x) => x.codice === cod);
   if (!k) return;
-  const cp = k.copertura, ne = k.neff;
+  const  ne = k.neff;
+    /* La copertura del constraint set (67/333 per i K9C, 26/96 per i K6C)
+     stava qui e ne e' stata tolta il 2/9: e' una proprieta' del DISEGNO
+     dei blocchi, non del comune — identica per tutti i comuni dello
+     stesso livello, quindi in una scheda che serve a confrontarli non
+     discrimina nulla. Resta nel pannello dei marginali, dove dice se
+     QUEL filtro ha un confronto censuario, che e' la domanda giusta. */
   const riga = (e, v) => `<div class="cc"><em>${e}</em><b>${v}</b></div>`;
   $("cartaComune").hidden = false;
   $("cartaComune").innerHTML =
@@ -544,16 +641,23 @@ function cartaComune(cod) {
       ? `${k.zone} ${k.livello}` : "nessuna (K6C)") +
     riga("tier del paese", `${k.tier}${k.tier === 0
       ? " — nessuna fonte locale" : ""}`) +
-    (cp ? riga("riferimento",
-      `${(cp.coperte / cp.totali * 100).toFixed(0)}% ` +
-      `<span style="color:var(--tenue)">(${cp.coperte}/${cp.totali})</span>`) : "") +
     (ne ? riga(`banda su ${ne.var}`,
       `×${ne.banda} <span style="color:var(--tenue)">` +
       `n/n_eff ${ne.rapporto}</span>`) : "") +
     (ne ? `<div class="atl-nota" style="margin-top:.5rem">` +
       `${num(ne.n)} individui poggiano su ${num(ne.n_eff)} osservazioni ` +
-      `efficaci. Un comune piccolo non satura il pool: la sua banda e' piu' ` +
-      `stretta.</div>` : "") +
+      `efficaci. ` +
+      (ne.rapporto >= 20
+        ? `Il pool di donatori e' saturo: ogni donatore serve molti ` +
+          `individui, quindi la banda onesta e' ${ne.banda} volte piu' ` +
+          `larga di quella ingenua.`
+        : ne.rapporto >= 5
+        ? `Il pool e' parzialmente saturo: la banda onesta e' ${ne.banda} ` +
+          `volte quella ingenua.`
+        : `Un comune piccolo non satura il pool: ogni donatore porta ` +
+          `ancora informazione quasi indipendente, e la banda resta ` +
+          `stretta (${ne.banda}).`) +
+      `</div>` : "") +
     `<div class="via">` +
     (cod === COMUNE
       ? `<span style="color:var(--tenue);font-size:12px">citta' corrente</span>`
@@ -562,15 +666,27 @@ function cartaComune(cod) {
 }
 
 $("atlante").addEventListener("click", (e) => {
-  if (!hitAtl) return;
   const r = e.target.getBoundingClientRect();
   const mx = e.clientX - r.left, my = e.clientY - r.top;
-  for (let i = 0; i < hitAtl.length; i += 4) {
-    const dx = hitAtl[i] - mx, dy = hitAtl[i + 1] - my;
-    if (dx * dx + dy * dy <= hitAtl[i + 2] ** 2) return cartaComune(hitAtl[i + 3]);
+  // prima i dischi e le pastiglie fuori regione: stanno SOPRA i poligoni,
+  // quindi vincono il clic dove si sovrappongono
+  if (hitAtl) {
+    for (let i = 0; i < hitAtl.length; i += 4) {
+      const dx = hitAtl[i] - mx, dy = hitAtl[i + 1] - my;
+      if (dx * dx + dy * dy <= hitAtl[i + 2] ** 2) return cartaComune(hitAtl[i + 3]);
+    }
+  }
+  // poi i poligoni della coropleta: isPointInPath sui Path2D costruiti in
+  // disegnaAtlante, cosi' non serve scrivere un point-in-polygon
+  if (hitPoly) {
+    const g = $("atlante").getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    for (const h of hitPoly)
+      if (g.isPointInPath(h.P, mx * dpr, my * dpr)) return cartaComune(h.cod);
   }
   $("cartaComune").hidden = true;
 });
+if ($("indicatore")) $("indicatore").addEventListener("change", disegnaAtlante);
 document.addEventListener("click", (e) => {
   if (e.target.closest("[data-chiudi-carta]")) $("cartaComune").hidden = true;
   const v = e.target.closest("[data-vai]");
@@ -1808,6 +1924,15 @@ $("citta").addEventListener("change", (e) => {
     if (!r.ok) throw 0;
     const ix = await r.json();
     INDICE = ix;
+    // lookup per codice: la coropleta cerca un comune per ogni poligono, e
+    // un find lineare su 251 voci x 330 poligoni sarebbe 80.000 confronti
+    // a ogni ridisegno
+    INDICE_BY_COD = Object.fromEntries(INDICE.comuni.map((k) => [k.codice, k]));
+    // geometrie comunali: se mancano, l'atlante resta ai dischi e il viewer
+    // non si rompe per un file in piu'
+    try {
+      GEO = await (await fetch(`${RADICE}/geo/er_comuni.json`)).json();
+    } catch (eg) { GEO = null; }
     $("citta").innerHTML = ix.comuni.map((c) =>
       `<option value="${c.codice}"${c.codice === COMUNE ? " selected" : ""}>` +
       `${c.nome} — ${num(c.individui)}` +
