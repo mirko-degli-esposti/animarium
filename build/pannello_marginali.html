@@ -362,7 +362,10 @@
 <script type="module">
 const DUCKDB = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm";
 const P = new URLSearchParams(location.search);
-const COMUNE = P.get("comune") || "036023";
+// Bologna come default: con l'atlante aperto il comune conta meno, ma se
+// qualcuno chiude la mappa e' la citta' piu' rappresentativa del bundle
+// (K9C su 18 zone, tier 2, la banda piu' larga della flotta).
+const COMUNE = P.get("comune") || "037006";
 
 let RADICE = "../bundle", BASE = "";
 async function trovaBundle() {
@@ -398,15 +401,15 @@ function avviso(cls, html) {
 }
 
 /* ---------- atlante regionale ----------------------------------------- */
-/* Una mappa dei comuni coperti, non solo un modo di navigare: dieci
-   capoluoghi emiliani piu' un comune da 16.000 abitanti su un territorio che
-   ne ha 328. Cosa NON copriamo e' informazione quanto cosa copriamo.
+/* Una coropleta dei comuni coperti, non solo un modo di navigare. Alla
+   v0.15 diceva cosa NON copriamo (undici su 328); alla v0.16 la copertura
+   e' l'oggetto — 245 comuni ER su 330, il 95% della popolazione — e il
+   limite si legge nel grigio degli 85 sotto soglia.
 
-   Le posizioni sono i baricentri della popolazione, calcolati da
-   build_indice.py sui lon/lat degli individui: nessuna geometria esterna.
-   Brescia sta fuori regione e non viene nascosta — e' l'unica con pool AVQ
-   lombardo, quindi il caso piu' diverso che abbiamo: compare come pastiglia
-   a margine, con il motivo scritto. */
+   Geometrie da build/geo_comuni.py (dissolve delle sezioni, 302 KB);
+   baricentri della popolazione da build_indice.py per le pastiglie fuori
+   regione. Brescia e Mantova non vengono nascoste: sono le uniche col
+   pool AVQ lombardo, quindi il caso piu' diverso che il bundle contenga. */
 
 const R_MIN = 4, R_MAX = 17;
 
@@ -1044,17 +1047,23 @@ function leggiURL() {
   delta = P.get("delta") === "1";
   mappaOn = P.get("mappa") === "1";
   fiduciaOn = P.get("fiducia") === "1";
-  atlanteOn = P.get("atlante") === "1";
+    /* L'atlante e' aperto per default: con 251 comuni la copertura E' il
+     contenuto, ed e' la prima cosa da vedere. P.has invece di P.get
+     cosi' ?atlante=0 continua a chiuderlo. */
+  atlanteOn = P.has("atlante") ? P.get("atlante") === "1" : true;
   nucleiOn = P.get("nuclei") === "1";
   modo = P.get("modo") === "punti" ? "punti" : "quota";
 }
 function scriviURL() {
   const p = new URLSearchParams();
   p.set("comune", COMUNE);
+  // esplicito, non condizionale come gli altri: il default e' ACCESO,
+  // quindi l'assenza del parametro significherebbe "aperto" e chiudere
+  // l'atlante non verrebbe ricordato al ricaricamento
+  p.set("atlante", atlanteOn ? "1" : "0");
   for (const [k, s] of attivi) if (s.size) p.set(k, [...s].join("~"));
   if (delta) p.set("delta", "1");
   if (fiduciaOn) p.set("fiducia", "1");
-  if (atlanteOn) p.set("atlante", "1");
   if (nucleiOn) p.set("nuclei", "1");
   if (mappaOn) { p.set("mappa", "1"); p.set("modo", modo); }
   history.replaceState(null, "", "?" + p.toString());
@@ -1933,10 +1942,28 @@ $("citta").addEventListener("change", (e) => {
     try {
       GEO = await (await fetch(`${RADICE}/geo/er_comuni.json`)).json();
     } catch (eg) { GEO = null; }
-    $("citta").innerHTML = ix.comuni.map((c) =>
-      `<option value="${c.codice}"${c.codice === COMUNE ? " selected" : ""}>` +
-      `${c.nome} — ${num(c.individui)}` +
-      `${c.livello ? "" : " · non articolato"}</option>`).join("");
+    /* 251 comuni in una <select> piatta sono ingestibili: raggruppati per
+       provincia (il prefisso del codice, l'unica gerarchia che i codici
+       gia' contengono) la lista si scorre a blocchi. La navigazione vera
+       resta l'atlante — questo e' la scorciatoia per chi sa dove andare. */
+    const PROV = { "033": "Piacenza", "034": "Parma", "035": "Reggio Emilia",
+      "036": "Modena", "037": "Bologna", "038": "Ferrara", "039": "Ravenna",
+      "040": "Forlì-Cesena", "099": "Rimini", "015": "Milano",
+      "017": "Brescia", "020": "Mantova", "074": "Brindisi" };
+    const perProv = new Map();
+    for (const c of ix.comuni) {
+      const p = PROV[c.codice.slice(0, 3)] || c.codice.slice(0, 3);
+      if (!perProv.has(p)) perProv.set(p, []);
+      perProv.get(p).push(c);
+    }
+    $("citta").innerHTML = [...perProv.entries()]
+      .sort((a, b) => b[1].length - a[1].length)
+      .map(([p, cs]) => `<optgroup label="${p} (${cs.length})">` +
+        cs.map((c) => `<option value="${c.codice}"` +
+          `${c.codice === COMUNE ? " selected" : ""}>` +
+          `${c.nome} — ${num(c.individui)}` +
+          `${c.livello ? "" : " · non articolato"}</option>`).join("") +
+        `</optgroup>`).join("");
   } catch (e) {
     $("citta").innerHTML = `<option>${COMUNE}</option>`;
     avviso("", "<b>Indice delle citta' assente</b>. " +
