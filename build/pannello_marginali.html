@@ -420,7 +420,10 @@ function traduciDOM(radice) {
         if (!k || !/[A-Za-zÀ-ÿ]{2,}/.test(k)) continue;
         const t = I18N[k];
         if (t === undefined) MANCANTI.add(k);
-        else n.nodeValue = n.nodeValue.replace(k, t);
+        // si conserva solo lo spazio ai bordi: il testo grezzo puo' avere
+        // a-capo interni che la chiave normalizzata non ha, e un replace
+        // testuale fallirebbe in silenzio
+        else n.nodeValue = n.nodeValue.replace(/^(\s*)[\s\S]*?(\s*)$/, `$1${t}$2`);
       } else if (n.nodeType === 1 && n.tagName !== "SCRIPT" && n.tagName !== "STYLE") {
         walk(n);
       }
