@@ -651,7 +651,7 @@ function disegnaAtlante() {
     g.textAlign = "left";
     g.font = "9.5px ui-sans-serif, sans-serif";
     g.fillStyle = "#6b6862";
-    g.fillText("fuori regione", 8, 44);
+    g.fillText(T("fuori regione"), 8, 44);
     let fx = 22;
     for (const k of fuori) {
       const r = raggio(k.individui) * .85, y = 18;
@@ -676,18 +676,20 @@ function disegnaAtlante() {
      invece che per assenza di dischi. */
   const nER = INDICE.comuni.filter(
     (k) => (k.regione || "").startsWith("emilia")).length;
-  const etich = { individui: "popolazione", pct_stranieri: "quota di stranieri",
-    eta_mediana: "eta' mediana", pct_laureati: "laureati fra i 25+",
-    banda: "banda n/n_eff" };
+  const etich = { individui: T("popolazione"), pct_stranieri: T("quota di stranieri"),
+    eta_mediana: T("eta' mediana"), pct_laureati: T("laureati fra i 25+"),
+    banda: T("banda n/n_eff") };
   const ind2 = $("indicatore") ? $("indicatore").value : "individui";
+  // ogni frase in un solo template taggato: la chiave si normalizza sugli
+  // spazi, quindi si puo' andare a capo dentro il template
   $("atlNota").innerHTML =
-    `<b>${nER} comuni</b> su 330 in Emilia-Romagna` +
-    (fuori.length ? `, piu' ${fuori.map((k) => k.nome).join(", ")} ` +
-      `fuori regione — pool AVQ diverso, quindi <b>n_eff</b> diverso` : "") +
-    `. Colore: <b>${etich[ind2] || ind2}</b> della popolazione sintetica, ` +
-    `in scala di rango. In grigio i comuni sotto la soglia di inclusione ` +
-    `(meno di 3.000 abitanti: il campione sarebbe piu' piccolo del ` +
-    `supporto del modello). Clicca per la scheda.`;
+    T`<b>${nER} comuni</b> su 330 in Emilia-Romagna` +
+    (fuori.length ? T`, piu' ${fuori.map((k) => k.nome).join(", ")} fuori
+      regione — pool AVQ diverso, quindi <b>n_eff</b> diverso` : "") +
+    T`. Colore: <b>${etich[ind2] || ind2}</b> della popolazione sintetica,
+      in scala di rango. In grigio i comuni sotto la soglia di inclusione
+      (meno di 3.000 abitanti: il campione sarebbe piu' piccolo del
+      supporto del modello). Clicca per la scheda.`;
 }
 
 function cartaComune(cod) {
@@ -704,32 +706,32 @@ function cartaComune(cod) {
   $("cartaComune").hidden = false;
   $("cartaComune").innerHTML =
     `<span class="chiudi" data-chiudi-carta>×</span><h4>${k.nome}</h4>` +
-    riga("individui", num(k.individui)) +
-    riga("articolazione", k.livello
-      ? `${k.zone} ${k.livello}` : "nessuna (K6C)") +
-    riga("tier del paese", `${k.tier}${k.tier === 0
-      ? " — nessuna fonte locale" : ""}`) +
-    (ne ? riga(`banda su ${ne.var}`,
+    riga(T("individui"), num(k.individui)) +
+    riga(T("articolazione"), k.livello
+      ? `${k.zone} ${k.livello}` : T("nessuna (K6C)")) +
+    riga(T("tier del paese"), `${k.tier}${k.tier === 0
+      ? " " + T("— nessuna fonte locale") : ""}`) +
+    (ne ? riga(T`banda su ${ne.var}`,
       `×${ne.banda} <span style="color:var(--tenue)">` +
       `n/n_eff ${ne.rapporto}</span>`) : "") +
     (ne ? `<div class="atl-nota" style="margin-top:.5rem">` +
-      `${num(ne.n)} individui poggiano su ${num(ne.n_eff)} osservazioni ` +
-      `efficaci. ` +
+      T`${num(ne.n)} individui poggiano su ${num(ne.n_eff)} osservazioni
+        efficaci. ` +
       (ne.rapporto >= 20
-        ? `Il pool di donatori e' saturo: ogni donatore serve molti ` +
-          `individui, quindi la banda onesta e' ${ne.banda} volte piu' ` +
-          `larga di quella ingenua.`
+        ? T`Il pool di donatori e' saturo: ogni donatore serve molti
+            individui, quindi la banda onesta e' ${ne.banda} volte piu'
+            larga di quella ingenua.`
         : ne.rapporto >= 5
-        ? `Il pool e' parzialmente saturo: la banda onesta e' ${ne.banda} ` +
-          `volte quella ingenua.`
-        : `Un comune piccolo non satura il pool: ogni donatore porta ` +
-          `ancora informazione quasi indipendente, e la banda resta ` +
-          `stretta (${ne.banda}).`) +
+        ? T`Il pool e' parzialmente saturo: la banda onesta e' ${ne.banda}
+            volte quella ingenua.`
+        : T`Un comune piccolo non satura il pool: ogni donatore porta
+            ancora informazione quasi indipendente, e la banda resta
+            stretta (${ne.banda}).`) +
       `</div>` : "") +
     `<div class="via">` +
     (cod === COMUNE
-      ? `<span style="color:var(--tenue);font-size:12px">citta' corrente</span>`
-      : `<button class="az" data-vai="${cod}">apri ${k.nome}</button>`) +
+      ? `<span style="color:var(--tenue);font-size:12px">${T("citta' corrente")}</span>`
+      : `<button class="az" data-vai="${cod}">${T`apri ${k.nome}`}</button>`) +
     `</div>`;
 }
 
