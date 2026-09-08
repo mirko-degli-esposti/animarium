@@ -773,8 +773,8 @@ document.addEventListener("click", (e) => {
    anagrafica (case di riposo, studentati, caserme), dedotta dal residuo dei
    vincoli censuari. Va mostrata come categoria, non nascosta. */
 
-const RUOLI = { R: "riferimento", P: "partner", F: "figlio",
-                G: "genitore", A: "altro parente", N: "non parente" };
+const RUOLI = { R: T("riferimento"), P: T("partner"), F: T("figlio"),
+                G: T("genitore"), A: T("altro parente"), N: T("non parente") };
 
 /* Tipologia dalla firma dei ruoli ordinati. Il repertorio AVQ da cui le
    configurazioni sono estratte e' emiliano-lombardo e NON comunale: questa
@@ -782,11 +782,11 @@ const RUOLI = { R: "riferimento", P: "partner", F: "figlio",
 function tipologia(firma) {
   const n = firma.length;
   const c = (x) => (firma.match(new RegExp(x, "g")) || []).length;
-  if (n === 1) return "Unipersonale";
-  if (c("P") && c("F")) return "Coppia con figli";
-  if (c("P")) return "Coppia senza figli";
-  if (c("F")) return "Monogenitore";
-  return "Altra convivenza familiare";
+  if (n === 1) return T("Unipersonale");
+  if (c("P") && c("F")) return T("Coppia con figli");
+  if (c("P")) return T("Coppia senza figli");
+  if (c("F")) return T("Monogenitore");
+  return T("Altra convivenza familiare");
 }
 
 async function datiNuclei() {
@@ -871,8 +871,8 @@ function disegnaNuclei(d) {
   for (let k = 1; k <= AMAX; k++) {
     const v = d.per.filter((x) => (k === AMAX ? x.a >= AMAX : x.a === k))
                    .reduce((s, x) => s + x.n, 0);
-    amp.push([k === AMAX ? `${k}+ componenti`
-                         : `${k} component${k === 1 ? "e" : "i"}`, v,
+    amp.push([k === AMAX ? T`${k}+ componenti`
+                         : k === 1 ? T`${k} componente` : T`${k} componenti`, v,
               (rifTot && senzaFiltro) ? rifTot[String(k)] : null]);
   }
   const scalaA = Math.max(...amp.map((x) => Math.max(x[1], x[2] || 0))) * 1.05;
@@ -885,46 +885,47 @@ function disegnaNuclei(d) {
 
   g.innerHTML = `
     <section class="nuc-blocco">
-      <h3>Famiglie per ampiezza</h3>
+      <h3>${T("Famiglie per ampiezza")}</h3>
       <div class="sotto">${rifTot && senzaFiltro
-        ? "rombo: censimento 2023 (PF3–PF8). E' <b>lo stesso vincolo</b> da "
-          + "cui i nuclei sono costruiti: lo scarto misura l'attrito fra "
-          + "vincolo e popolazione, non l'errore del modello"
-        : "nessun riferimento censuario per questo filtro"}</div>
+        ? T`rombo: censimento 2023 (PF3–PF8). E' <b>lo stesso vincolo</b> da
+          cui i nuclei sono costruiti: lo scarto misura l'attrito fra
+          vincolo e popolazione, non l'errore del modello`
+        : T("nessun riferimento censuario per questo filtro")}</div>
       ${barre(amp, scalaA)}
     </section>
 
     <section class="nuc-blocco">
-      <h3>Tipologia familiare</h3>
-      <div class="sotto"><b>Nessun riferimento censuario.</b> Le
+      <h3>${T("Tipologia familiare")}</h3>
+      <div class="sotto">${T`<b>Nessun riferimento censuario.</b> Le
         configurazioni interne vengono dal repertorio AVQ, che e'
         emiliano-lombardo e non comunale: questa e' una distribuzione di
-        modello, non un dato osservato del comune.</div>
+        modello, non un dato osservato del comune.`}</div>
       ${barre(d.tipologie.map(([t, n]) => [t, n]), scalaT)}
     </section>
 
     <section class="nuc-blocco">
-      <h3>In cifre</h3>
-      <div class="sotto">le percentuali di famiglie e quelle di persone
-        rispondono a domande diverse</div>
+      <h3>${T("In cifre")}</h3>
+      <div class="sotto">${T`le percentuali di famiglie e quelle di persone
+        rispondono a domande diverse`}</div>
       <div class="nuc-cifre">
-        <em>famiglie</em><b>${num(d.nuclei)}</b>
-        <em>ampiezza media</em><b>${dec(media)}</b>
-        <em>famiglie unipersonali</em><b>${pct(soli ? soli.n / d.nuclei : 0)}</b>
-        <em>persone che vivono sole</em><b>${pct(soli ? soli.n / d.tot : 0)}</b>
-        <em>famiglie con minori</em><b>${pct(d.minori / d.nuclei)}</b>
-        <em>famiglie con ultra75enni</em><b>${pct(d.anziani / d.nuclei)}</b>
-        <em>famiglie con almeno uno straniero</em><b>${pct(d.stranieri / d.nuclei)}</b>
-        <em>persone in convivenza</em><b>${pct(d.conviv / d.tot)}</b>
+        <em>${T("famiglie")}</em><b>${num(d.nuclei)}</b>
+        <em>${T("ampiezza media")}</em><b>${dec(media)}</b>
+        <em>${T("famiglie unipersonali")}</em><b>${pct(soli ? soli.n / d.nuclei : 0)}</b>
+        <em>${T("persone che vivono sole")}</em><b>${pct(soli ? soli.n / d.tot : 0)}</b>
+        <em>${T("famiglie con minori")}</em><b>${pct(d.minori / d.nuclei)}</b>
+        <em>${T("famiglie con ultra75enni")}</em><b>${pct(d.anziani / d.nuclei)}</b>
+        <em>${T("famiglie con almeno uno straniero")}</em><b>${pct(d.stranieri / d.nuclei)}</b>
+        <em>${T("persone in convivenza")}</em><b>${pct(d.conviv / d.tot)}</b>
       </div>
     </section>`;
 
   $("nucNota").innerHTML =
-    `<b>${num(d.nuclei)} famiglie</b> · ${num(d.conviv)} persone in ` +
-    `<b>convivenza anagrafica</b> (case di riposo, studentati, caserme): ` +
-    `non hanno nucleo, e non e' un dato mancante ma il residuo dei vincoli ` +
-    `censuari. · <a data-nucleo-a-caso style="cursor:pointer;` +
-    `text-decoration:underline">mostrami una famiglia a caso</a>`;
+    T`<b>${num(d.nuclei)} famiglie</b> · ${num(d.conviv)} persone in
+      <b>convivenza anagrafica</b> (case di riposo, studentati, caserme):
+      non hanno nucleo, e non e' un dato mancante ma il residuo dei vincoli
+      censuari.` +
+    ` · <a data-nucleo-a-caso style="cursor:pointer;` +
+    `text-decoration:underline">${T("mostrami una famiglia a caso")}</a>`;
 }
 
 /* --- scheda di nucleo ------------------------------------------------- */
@@ -933,12 +934,12 @@ async function schedaNucleo() {
   const dove = pr ? `WHERE ${pr} AND` : "WHERE";
   const s = $("schedaNucleo");
   s.hidden = false;
-  s.innerHTML = "estrazione…";
+  s.innerHTML = T("estrazione…");
   try {
     const q = await conn.query(`
       SELECT sezione, nucleo FROM 'pop.parquet' ${dove} nucleo >= 0
       USING SAMPLE 1 ROWS`);
-    if (!q.numRows) { s.innerHTML = "nessuna famiglia col filtro attivo"; return; }
+    if (!q.numRows) { s.innerHTML = T("nessuna famiglia col filtro attivo"); return; }
     const sez = String(q.get(0).sezione), nuc = Number(q.get(0).nucleo);
     const m = await conn.query(`
       SELECT * FROM 'pop.parquet'
@@ -970,45 +971,47 @@ async function schedaNucleo() {
       `top:.4rem;right:.55rem;cursor:pointer;color:var(--tenue);` +
       `font-weight:700">×</span>` +
       `<div class="tit">${sez}-${String(nuc).padStart(6, "0")}</div>` +
-      `<div class="sotto">ampiezza ${righe.length} · firma <b>${firma}</b> · ` +
+      `<div class="sotto">${T`ampiezza ${righe.length} · firma <b>${firma}</b>`} · ` +
       `${tipologia(firma)}${righe[0].zona
         ? " · " + etichettaMod("zona", String(righe[0].zona)) : ""}</div>` +
       `<table>${righe.map((x) => `<tr>` +
         `<td class="ruolo">${String(x.ruolo)}</td>` +
         `<td>${String(x.sesso) === "F" ? "F" : "M"}</td>` +
-        `<td>${x.eta_anni} anni</td>` +
+        `<td>${T`${x.eta_anni} anni`}</td>` +
         `<td>${etichettaMod("stato_civile", String(x.stato_civile))}</td>` +
         `<td>${etichettaMod("cittadinanza", String(x.cittadinanza))}</td>` +
         `<td>${etichettaMod("istruzione", String(x.istruzione))}</td>` +
         `<td>${etichettaMod("condizione", String(x.condizione))}</td>` +
         `</tr>`).join("")}</table>` +
-      (divari.length ? `<div class="sotto" style="margin-top:.4rem">divari ` +
-        `dal riferimento: ${divari.join(" · ")}</div>` : "") +
-      (spaiati ? `<div class="avv"><b>${spaiati} coniugat${spaiati > 1
-        ? "i" : "o"} senza coniuge nel nucleo.</b> Non e' un difetto
+      (divari.length ? `<div class="sotto" style="margin-top:.4rem">` +
+        T`divari dal riferimento: ${divari.join(" · ")}` + `</div>` : "") +
+      (spaiati ? `<div class="avv">` +
+        (spaiati > 1 ? T`<b>${spaiati} coniugati senza coniuge nel nucleo.</b>`
+                     : T`<b>${spaiati} coniugato senza coniuge nel nucleo.</b>`) +
+        " " + T`Non e' un difetto
         dell'assemblaggio: il constraint set non impone che i coniugati
         siano in numero pari dentro una sezione, quindi in molte sezioni
         restano spaiati. L'anello 4 rivela un'incoerenza gia' presente
         nell'anello 1, non la crea — e nella realta' un coniuge che vive
-        altrove esiste.</div>` : "") +
+        altrove esiste.` + `</div>` : "") +
       `<div class="sotto" style="margin-top:.5rem">` +
-      `<b>■ vincolato</b> sesso, eta', stato civile, istruzione, ` +
-      `cittadinanza — dal censimento · <b>◧ derivato</b> il ruolo e la ` +
-      `firma, dal repertorio AVQ. La scheda si legge come una famiglia, ` +
-      `ma le due meta' non hanno lo stesso statuto.</div>`;
-  } catch (e) { s.innerHTML = "errore: " + e; }
+      T`<b>■ vincolato</b> sesso, eta', stato civile, istruzione,
+        cittadinanza — dal censimento · <b>◧ derivato</b> il ruolo e la
+        firma, dal repertorio AVQ. La scheda si legge come una famiglia,
+        ma le due meta' non hanno lo stesso statuto.` + `</div>`;
+  } catch (e) { s.innerHTML = T("errore:") + " " + e; }
 }
 
 async function aggiornaNuclei() {
   if (!nucleiOn) return;
-  $("nucNota").textContent = "calcolo…";
+  $("nucNota").textContent = T("calcolo…");
   try { ultimoNuc = await datiNuclei(); disegnaNuclei(ultimoNuc); }
   catch (e) {
     $("nucGriglia").innerHTML = "";
     $("nucNota").innerHTML =
-      `<b>Nuclei non disponibili per questo comune.</b> Il Parquet non ha ` +
-      `le colonne <code>nucleo</code> e <code>ruolo</code>: rigenerare con ` +
-      `<code>to_parquet.py</code> (l'anello 4 e' incluso per default).` +
+      T`<b>Nuclei non disponibili per questo comune.</b> Il Parquet non ha
+        le colonne <code>nucleo</code> e <code>ruolo</code>: rigenerare con
+        <code>to_parquet.py</code> (l'anello 4 e' incluso per default).` +
       `<br><span style="opacity:.6">${e}</span>`;
   }
 }
