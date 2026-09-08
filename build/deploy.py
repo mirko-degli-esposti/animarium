@@ -28,6 +28,8 @@ storia non cresce mai e `main` resta pulito con codice e note.
 Cosa finisce online
 -------------------
     index.html          il pannello (rinominato)
+    en/index.html       lo stesso pannello in inglese (dizionario build/i18n/en.json
+                        inlined, <html lang="en">; vedi build/i18n_check.py)
     smoke.html          lo smoke test, per verificare che l'host supporti
                         le richieste Range: senza, DuckDB scaricherebbe i
                         file interi e l'app sarebbe lenta senza dire perche'
@@ -53,6 +55,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import i18n_check   # build/i18n_check.py
+
 RADICE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -75,6 +80,23 @@ def esegui(cmd, cwd):
         print(p.stderr, file=sys.stderr)
         sys.exit(f"errore: {' '.join(cmd)}")
     return p.stdout.strip()
+
+
+def genera_en(out):
+    """deploy/en/index.html: stesso pannello, <html lang="en"> e dizionario
+    inlined al posto della riga @i18n. Il bundle viene trovato in ../bundle."""
+    src = open("build/pannello_marginali.html", encoding="utf-8").read()
+    assert src.count('<html lang="it">') == 1, "atteso un solo <html lang=\"it\">"
+    riga = 'const I18N = {};   // @i18n'
+    assert src.count(riga) == 1, "manca la riga @i18n nel sorgente"
+    import json
+    diz = json.load(open("build/i18n/en.json", encoding="utf-8"))
+    src = src.replace('<html lang="it">', '<html lang="en">')
+    src = src.replace(riga, "const I18N = " + json.dumps(diz, ensure_ascii=False)
+                      + ";   // @i18n (generato da deploy.py)")
+    os.makedirs(os.path.join(out, "en"), exist_ok=True)
+    with open(os.path.join(out, "en", "index.html"), "w", encoding="utf-8") as f:
+        f.write(src)
 
 
 def main():
@@ -107,6 +129,12 @@ def main():
     os.makedirs(out)
 
     shutil.copy("build/pannello_marginali.html", os.path.join(out, "index.html"))
+    # versione inglese per i referee: stesso sorgente, dizionario build/i18n/en.json
+    _, mancanti, _ = i18n_check.verifica()
+    if mancanti:
+        print(f"[avviso] {len(mancanti)} stringhe senza traduzione: nel sito inglese "
+              f"compaiono in italiano (build/i18n/pending_en.json)")
+    genera_en(out)
     if os.path.exists("build/smoke_duckdb.html"):
         shutil.copy("build/smoke_duckdb.html", os.path.join(out, "smoke.html"))
     # il tarball del dataset (>25 MiB) e' materiale d'archivio, non di viewer:
@@ -163,6 +191,7 @@ def main():
         print(f"\nPer provare in locale:")
         print(f"  python build/serve_range.py --dir {out}")
         print(f"  http://localhost:8000/index.html")
+        print(f"  http://localhost:8000/en/index.html   (inglese)")
         print(f"\nPer pubblicare: python build/deploy.py --cloudflare")
         return
 

@@ -230,7 +230,7 @@
   <span class="sub" id="sottotitolo">caricamento…</span>
 </header>
 
-<div class="avviso-globale">
+<div class="avviso-globale" data-i18n>
   <b>Popolazione sintetica.</b> Nessuno degli individui mostrati esiste, e
   nessuno corrisponde a una persona reale. <b>Il punto sulla mappa è
   casuale dentro la sezione di censimento</b>: la risoluzione dei dati si
@@ -362,6 +362,71 @@
 <script type="module">
 const DUCKDB = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm";
 const P = new URLSearchParams(location.search);
+/* ---------- i18n --------------------------------------------------------
+   Chiave = frase italiana (stile gettext). La versione italiana e' l'identita':
+   il sorgente resta scritto in italiano, il dizionario vive in build/i18n/en.json
+   e deploy.py lo inietta al posto della riga `const I18N = {}` marcata @i18n,
+   fissando anche <html lang="en">. Chiave assente -> resta l'italiano, per
+   frase intera, e finisce in MANCANTI (console: __i18n_mancanti()).
+
+   Tre modi d'uso: T con una stringa semplice; T come tag di un template
+   literal, dove ogni interpolazione diventa {0}, {1}, ... nella chiave;
+     markup statico: tradotto al caricamento da traduciDOM(), per nodo di
+     testo; i blocchi di prosa con tag inline dentro (<b>, <i>) vanno marcati
+     con data-i18n e vengono tradotti come innerHTML intero.
+   Le chiavi sono normalizzate: spazi/newline collassati a uno spazio. */
+const I18N = {};   // @i18n
+const LANG = (document.documentElement.lang || "it").slice(0, 2);
+const LOCALE = LANG === "en" ? "en-GB" : "it-IT";
+const DECIMALE = LANG === "en" ? "." : ",";
+const MANCANTI = new Set();
+const normK = (s) => s.replace(/\s+/g, " ").trim();
+
+function T(strs, ...vals) {
+  if (typeof strs === "string") {               // stringa semplice
+    const k = normK(strs);
+    if (LANG === "it" || !k) return strs;
+    const t = I18N[k];
+    if (t === undefined) { MANCANTI.add(k); return strs; }
+    return t;
+  }
+  // tag di template: ricostruisco la chiave con {i} al posto delle interpolazioni
+  const k = normK(strs.raw ? strs.map((s, i) => s + (i < vals.length ? `{${i}}` : "")).join("")
+                           : String(strs));
+  const originale = () => strs.map((s, i) => s + (i < vals.length ? vals[i] : "")).join("");
+  if (LANG === "it") return originale();
+  const t = I18N[k];
+  if (t === undefined) { MANCANTI.add(k); return originale(); }
+  return t.replace(/\{(\d+)\}/g, (_, i) => vals[+i]);
+}
+
+function traduciDOM(radice) {
+  if (LANG === "it") return;
+  const walk = (el) => {
+    if (el.hasAttribute && el.hasAttribute("data-i18n")) {
+      const k = normK(el.innerHTML);
+      const t = I18N[k];
+      if (t === undefined) MANCANTI.add(k); else el.innerHTML = t;
+      return;
+    }
+    for (const n of Array.from(el.childNodes)) {
+      if (n.nodeType === 3) {
+        const k = normK(n.nodeValue);
+        if (!k || !/[A-Za-zÀ-ÿ]{2,}/.test(k)) continue;
+        const t = I18N[k];
+        if (t === undefined) MANCANTI.add(k);
+        else n.nodeValue = n.nodeValue.replace(k, t);
+      } else if (n.nodeType === 1 && n.tagName !== "SCRIPT" && n.tagName !== "STYLE") {
+        walk(n);
+      }
+    }
+  };
+  walk(radice);
+}
+window.__i18n_mancanti = () => [...MANCANTI].sort();
+document.title = T(document.title);
+traduciDOM(document.body);
+
 // Bologna come default: con l'atlante aperto il comune conta meno, ma se
 // qualcuno chiude la mappa e' la citta' piu' rappresentativa del bundle
 // (K9C su 18 zone, tier 2, la banda piu' larga della flotta).
@@ -377,10 +442,10 @@ async function trovaBundle() {
 }
 
 const $ = (id) => document.getElementById(id);
-const pct = (x) => (x * 100).toFixed(1).replace(".", ",") + "%";
-const pct2 = (x) => (x * 100).toFixed(2).replace(".", ",");
-const num = (n) => Math.round(n).toLocaleString("it-IT");
-const dec = (x, k = 2) => x.toFixed(k).replace(".", ",");
+const pct = (x) => (x * 100).toFixed(1).replace(".", DECIMALE) + "%";
+const pct2 = (x) => (x * 100).toFixed(2).replace(".", DECIMALE);
+const num = (n) => Math.round(n).toLocaleString(LOCALE);
+const dec = (x, k = 2) => x.toFixed(k).replace(".", DECIMALE);
 
 let manifest, RIF = null, conn, attivi = new Map(), delta = false, ultimo = null;
 let mappaOn = false, modo = "quota", geo = null, baseXY = null, hit = null;
