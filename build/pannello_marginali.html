@@ -463,10 +463,17 @@ if (LANG === "en") {
 const COMUNE = P.get("comune") || "037006";
 
 let RADICE = "../bundle", BASE = "";
+/* Su Cloudflare Pages un percorso inesistente non da' 404: senza un 404.html
+   il server risponde index.html con stato 200 (modalita' single-page app).
+   Da /en/ la prima prova, `bundle/`, non esiste, ma `ok` sarebbe vero e il
+   JSON.parse a valle troverebbe un `<`. Quindi si accetta la risposta solo
+   se e' davvero JSON, non solo se e' 200. In locale non cambia nulla. */
 async function trovaBundle() {
   for (const r of ["bundle", "../bundle"]) {
-    try { if ((await fetch(`${r}/comuni.json`, { method: "HEAD" })).ok) return r; }
-    catch (e) {}
+    try {
+      const h = await fetch(`${r}/comuni.json`, { method: "HEAD" });
+      if (h.ok && /json/.test(h.headers.get("content-type") || "")) return r;
+    } catch (e) {}
   }
   return "../bundle";
 }
