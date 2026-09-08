@@ -143,7 +143,7 @@ def _template_da(src, i):
         if c == "\\":
             pezzi.append(src[j:j + 2]); j += 2; continue
         if c == "`":
-            return norm("".join(pezzi)), j + 1
+            return norm(_unescape_js("".join(pezzi))), j + 1
         if src.startswith("${", j):
             prof, j2 = 1, j + 2
             while j2 < len(src) and prof:

@@ -38,6 +38,10 @@
   select { font: 500 13px inherit; padding: .25rem .4rem; background: #fff;
            border: 1px solid #cfcabf; border-radius: 3px; }
   header select { font-size: 14px; padding: .3rem .5rem; }
+  .lingua { margin-left: auto; font-size: 12.5px; letter-spacing: .04em;
+            color: var(--tenue); text-decoration: none; padding: .1rem .5rem;
+            border: 1px solid var(--linea); border-radius: 3px; }
+  .lingua:hover { color: var(--inchiostro); border-color: var(--inchiostro); }
 
   .avviso-globale { padding: .6rem 1.5rem; font-size: 12.5px; line-height: 1.45;
                     background: #f3ece2; border-bottom: 1px solid #d8c9b4; }
@@ -228,6 +232,7 @@
   <h1>Animarium</h1>
   <select id="citta"></select>
   <span class="sub" id="sottotitolo">caricamento…</span>
+  <a class="lingua" id="lingua" href="en/">EN</a>
 </header>
 
 <div class="avviso-globale" data-i18n>
@@ -426,6 +431,31 @@ function traduciDOM(radice) {
 window.__i18n_mancanti = () => [...MANCANTI].sort();
 document.title = T(document.title);
 traduciDOM(document.body);
+/* Il commutatore di lingua: EN nella pagina italiana, IT in quella inglese
+   (il testo lo cambia il dizionario). Il link porta con se' ?comune=... */
+{
+  const l = document.getElementById("lingua");
+  if (l) {
+    l.href = (LANG === "en" ? "../" : "en/") + location.search;
+    l.title = LANG === "en" ? "Versione italiana" : "English version";
+  }
+}
+/* Nella versione inglese i nomi degli attributi e le etichette delle
+   modalita' vengono dal manifest del bundle e restano in italiano: sono i
+   nomi di colonna e i valori del dataset rilasciato, e devono coincidere
+   con quelli dei Parquet. Lo si dichiara in testa invece di tacerlo. */
+if (LANG === "en") {
+  const d = document.createElement("div");
+  d.className = "messaggio";
+  d.innerHTML =
+    "<b>English version for reviewers.</b> Interface text is translated. " +
+    "Attribute names (<code>stato_civile</code>, <code>eta_anni</code>, …) and " +
+    "category labels (\u00abConiugato/a\u00bb, \u00abLaurea\u00bb, zone names) are " +
+    "deliberately kept in Italian: they are the column names and values of the " +
+    "released dataset, so what you read here matches what you find in the " +
+    "Parquet files. <a href=\"../\">Italian version</a>.";
+  document.getElementById("avvisi").prepend(d);
+}
 
 // Bologna come default: con l'atlante aperto il comune conta meno, ma se
 // qualcuno chiude la mappa e' la citta' piu' rappresentativa del bundle
@@ -542,7 +572,7 @@ function disegnaAtlante() {
   g.clearRect(0, 0, w, h);
 
   vistaAtl = preparaAtlante(w, h);
-  if (!vistaAtl) { $("atlNota").textContent = "indice senza coordinate"; return; }
+  if (!vistaAtl) { $("atlNota").textContent = T("indice senza coordinate"); return; }
   disegnaFondo(g, w, h, vistaAtl);
     if ($("fondo").value) {
     g.font = "10px ui-sans-serif, sans-serif";
@@ -1028,21 +1058,21 @@ document.addEventListener("click", (e) => {
    assign_avq.py seleziona per prefisso PUNTIFI. La batteria e' quindi
    incompleta di una voce su dodici. */
 const ISTITUZIONI = {
-  FIDMED:    "Medici del SSN",
-  FIDINF:    "Infermieri del SSN",
-  FORZE_ARMATE: "Forze armate",
-  PUNTIFI1:  "Parlamento italiano",
-  PUNTIFI2:  "Sistema giudiziario",
-  PUNTIFI3:  "Forze dell'ordine",
-  PUNTIFI4:  "Partiti politici",
-  PUNTIFI5:  "Parlamento europeo",
-  PUNTIFI6:  "Presidente della Repubblica",
-  PUNTIFI7:  "Governo italiano",
-  PUNTIFI8:  "Governo regionale",
-  PUNTIFI10: "Governo comunale",
-  PUNTIFI12: "Vigili del fuoco",
-  PUNTIFI13: "Banche",
-  VOTOUSL:   "Giudizio sull'ASL",
+  FIDMED:    T("Medici del SSN"),
+  FIDINF:    T("Infermieri del SSN"),
+  FORZE_ARMATE: T("Forze armate"),
+  PUNTIFI1:  T("Parlamento italiano"),
+  PUNTIFI2:  T("Sistema giudiziario"),
+  PUNTIFI3:  T("Forze dell'ordine"),
+  PUNTIFI4:  T("Partiti politici"),
+  PUNTIFI5:  T("Parlamento europeo"),
+  PUNTIFI6:  T("Presidente della Repubblica"),
+  PUNTIFI7:  T("Governo italiano"),
+  PUNTIFI8:  T("Governo regionale"),
+  PUNTIFI10: T("Governo comunale"),
+  PUNTIFI12: T("Vigili del fuoco"),
+  PUNTIFI13: T("Banche"),
+  VOTOUSL:   T("Giudizio sull'ASL"),
 };
 
 /* Medie nazionali: non piu' cablate, ma calcolate da medie_nazionali.py sui
@@ -1088,18 +1118,18 @@ let N_AVQ = 23;
    corretto, in una scheda che si legge come una persona suona burocratico. */
 const CONCORDA = {
   stato_civile: {
-    celibe_nubile:      ["celibe", "nubile"],
-    coniugato_unito:    ["coniugato", "coniugata"],
-    divorziato_sciolto: ["divorziato", "divorziata"],
-    vedovo:             ["vedovo", "vedova"],
+    celibe_nubile:      [T("celibe"), T("nubile")],
+    coniugato_unito:    [T("coniugato"), T("coniugata")],
+    divorziato_sciolto: [T("divorziato"), T("divorziata")],
+    vedovo:             [T("vedovo"), T("vedova")],
   },
   condizione: {
-    occupato:            ["occupato", "occupata"],
-    in_cerca:            ["in cerca di occupazione", "in cerca di occupazione"],
-    studente:            ["studente", "studentessa"],
-    casalinga:           ["casalingo", "casalinga"],
-    percettore_pensioni: ["pensionato", "pensionata"],
-    altra_condizione:    ["in altra condizione", "in altra condizione"],
+    occupato:            [T("occupato"), T("occupata")],
+    in_cerca:            [T("in cerca di occupazione"), T("in cerca di occupazione")],
+    studente:            [T("studente"), T("studentessa")],
+    casalinga:           [T("casalingo"), T("casalinga")],
+    percettore_pensioni: [T("pensionato"), T("pensionata")],
+    altra_condizione:    [T("in altra condizione"), T("in altra condizione")],
   },
 };
 const concorda = (attr, v, sesso) => {
@@ -1204,6 +1234,9 @@ async function marginali() {
   const ms = performance.now() - t0;
   const per = new Map();
   for (const r of res) {
+    // "(mancante)" e' un CODICE, non testo: e' il v con cui il manifest
+    // registra la modalita' del NULL (es. "Non applicabile" in area).
+    // Tradurlo lo scollega dal manifest e azzera il conteggio. Non usare T.
     const a = r.attr, m = r.mod === null ? "(mancante)" : String(r.mod);
     if (!per.has(a)) per.set(a, new Map());
     per.get(a).set(m, Number(r.n));
@@ -1268,13 +1301,13 @@ function disegnaFiducia(d) {
       (t) => `<span class="griglia10" style="left:${px(t)}"></span>`).join("");
     html += `<div class="fid">
       <span class="et">${ISTITUZIONI[v]}${A_PARTE.has(v)
-        ? '<br><small>universo per esperienza, non la batteria</small>'
+        ? `<br><small>${T("universo per esperienza, non la batteria")}</small>`
         : (s.copertura < COPERTURA_BASSA
-           ? `<br><small>${pct(s.copertura)} del campione: modulo a rotazione` +
+           ? `<br><small>${T`${pct(s.copertura)} del campione: modulo a rotazione`}` +
              `</small>` : "")}</span>
-      <span class="fasce" title="n=${num(s.n)} · donatori ${num(s.donatori)} · n_eff ${num(s.neff)}${
+      <span class="fasce" title="${T`n=${num(s.n)} · donatori ${num(s.donatori)} · n_eff ${num(s.neff)}`}${
         nz === undefined ? "" :
-        ` · Italia ${dec(nz)} · scarto ${s.media >= nz ? "+" : "−"}${dec(Math.abs(s.media - nz))}`}">
+        " " + T`· Italia ${dec(nz)} · scarto ${s.media >= nz ? "+" : "−"}${dec(Math.abs(s.media - nz))}`}">
         ${griglia}
         <span class="naive" style="left:${px(Math.max(0, s.media - s.ciNaive))};
           width:${px(Math.min(10, s.media + s.ciNaive) - Math.max(0, s.media - s.ciNaive))}"></span>
@@ -1282,7 +1315,7 @@ function disegnaFiducia(d) {
           width:${px(Math.min(10, s.media + s.ci) - Math.max(0, s.media - s.ci))}"></span>
         <span class="media" style="left:${px(s.media)}"></span>
         ${nz === undefined ? "" : `<span class="naz" style="left:${px(nz)}"
-          title="Italia ${dec(nz)}"></span>`}
+          title="${T`Italia ${dec(nz)}`}"></span>`}
       </span>
       <span class="num">${dec(s.media)} <small>±${dec(s.ci)}</small></span>
     </div>`;
@@ -1290,31 +1323,31 @@ function disegnaFiducia(d) {
 
   const q = d.get("PUNTIFI10") || [...d.values()][0];
   $("fidNota").innerHTML = q
-    ? `universo 15 anni e piu' · <b>n = ${num(q.n)}</b> ma ` +
-      `<b>n_eff = ${num(q.neff)}</b> su ${num(q.donatori)} donatori distinti: ` +
-      `la banda onesta e' <b>${dec(Math.sqrt(q.n / q.neff), 1)} volte</b> ` +
-      `piu' larga di quella ingenua.<br>` +
-      `Fascia chiara e sottile: banda calcolata su <i>n</i>. ` +
-      `Fascia scura e spessa: su <i>n_eff</i> di Kish, che e' quella vera. ` +
+    ? T`universo 15 anni e piu' · <b>n = ${num(q.n)}</b> ma
+        <b>n_eff = ${num(q.neff)}</b> su ${num(q.donatori)} donatori distinti:
+        la banda onesta e' <b>${dec(Math.sqrt(q.n / q.neff), 1)} volte</b>
+        piu' larga di quella ingenua.` + `<br>` +
+      T`Fascia chiara e sottile: banda calcolata su <i>n</i>.
+        Fascia scura e spessa: su <i>n_eff</i> di Kish, che e' quella vera.` + " " +
       (FONTE_NAZ
-      ? `Linea punteggiata: <b>media nazionale</b> — elaborazione propria sui ` +
-        `microdati AVQ ${FONTE_NAZ.anni.join(", ")}, pesata con COEFIN sullo ` +
-        `stesso universo (15 anni e piu'). <b>Non e' una cifra pubblicata ` +
-        `dall'ISTAT</b>, che diffonde percentuali e non medie. `
-      : `Medie nazionali assenti: esegui medie_nazionali.py. `) +
-      `<b>Le AVQ non hanno informazione geografica</b> (assunzione 6): ` +
-      `filtrando una zona, ogni differenza e' compositiva per costruzione.`
-    : "nessun dato";
+      ? T`Linea punteggiata: <b>media nazionale</b> — elaborazione propria sui
+          microdati AVQ ${FONTE_NAZ.anni.join(", ")}, pesata con COEFIN sullo
+          stesso universo (15 anni e piu'). <b>Non e' una cifra pubblicata
+          dall'ISTAT</b>, che diffonde percentuali e non medie.`
+      : T`Medie nazionali assenti: esegui medie_nazionali.py.`) + " " +
+      T`<b>Le AVQ non hanno informazione geografica</b> (assunzione 6):
+        filtrando una zona, ogni differenza e' compositiva per costruzione.`
+    : T("nessun dato");
   $("fidRighe").innerHTML = html;
 }
 
 async function aggiornaFiducia() {
   if (!fiduciaOn) return;
-  $("fidNota").textContent = "calcolo…";
+  $("fidNota").textContent = T("calcolo…");
   try { ultimoFid = await datiFiducia(); disegnaFiducia(ultimoFid); }
   catch (e) {
-    $("fidNota").innerHTML = `errore: ${e}<br>` +
-      `Serve <code>donor_id</code> nel Parquet: rigenera con to_parquet.py.`;
+    $("fidNota").innerHTML = `${T("errore:")} ${e}<br>` +
+      T`Serve <code>donor_id</code> nel Parquet: rigenera con to_parquet.py.`;
   }
 }
 
@@ -1461,9 +1494,9 @@ function rendi() {
       hit.push(sx, sy, id);
     }
     $("mappaNota").textContent =
-      `${num(d.pt.length)} punti` +
-      (d.pt.length >= d.cap ? ` (tetto ${num(d.cap)})` : "") +
-      " · grigio: la citta' intera · clicca un punto";
+      T`${num(d.pt.length)} punti` +
+      (d.pt.length >= d.cap ? " " + T`(tetto ${num(d.cap)})` : "") +
+      " · " + T("grigio: la citta' intera · clicca un punto");
     $("mappaScala").innerHTML = "";
   } else {
     hit = null;
@@ -1480,8 +1513,8 @@ function rendi() {
       g.fillRect(x, y, Math.max(1, x2 - x + .5), Math.max(1, y2 - y + .5));
     }
     $("mappaNota").textContent =
-      `celle di ~${Math.round(geo.passo * 111320)} m · quota max ${pct(vmax)} · ` +
-      `citta' ${pct(ultimaQuota)} · sotto ${SOGLIA} abitanti in grigio`;
+      T`celle di ~${Math.round(geo.passo * 111320)} m · quota max ${pct(vmax)} ·
+        citta' ${pct(ultimaQuota)} · sotto ${SOGLIA} abitanti in grigio`;
     $("mappaScala").innerHTML = "0 " + [0, .25, .5, .75, 1].map((f) =>
       `<span style="background:rgba(124,74,45,${(f * .9).toFixed(2)})"></span>`)
       .join("") + " " + pct(vmax);
@@ -1496,9 +1529,9 @@ function rendi() {
 async function aggiornaMappa(quotaGlobale) {
   if (!mappaOn) return;
   ultimaQuota = quotaGlobale;
-  $("mappaNota").textContent = "calcolo…";
+  $("mappaNota").textContent = T("calcolo…");
   try { ultimoDati = await datiMappa(); rendi(); }
-  catch (e) { $("mappaNota").textContent = "errore: " + e; }
+  catch (e) { $("mappaNota").textContent = T("errore:") + " " + e; }
 }
 
 /* ---------- navigazione ------------------------------------------------ */
@@ -1565,13 +1598,13 @@ const CLASSE = {
   indirizzo_fonte: "A", quinq: "A", id: "A", donor_id: "D",
 };
 const SEGNO = { V: "■", A: "◧", C: "□", D: "▨" };
-const NOME_CLASSE = { V: "vincolato dal censimento", A: "allocato",
-  C: "condizionato", D: "donato dall'indagine AVQ" };
+const NOME_CLASSE = { V: T("vincolato dal censimento"), A: T("allocato"),
+  C: T("condizionato"), D: T("donato dall'indagine AVQ") };
 const GRUPPI = [
-  ["Anello 1 — vincolato", ["sesso", "eta", "eta_anni", "stato_civile",
+  [T("Anello 1 — vincolato"), ["sesso", "eta", "eta_anni", "stato_civile",
     "cittadinanza", "istruzione", "condizione", "background", "origine_genitori"]],
-  ["Anello 2 — origine", ["paese", "area"]],
-  ["Anello 3 — collocazione", ["zona", "quartiere", "sezione", "via",
+  [T("Anello 2 — origine"), ["paese", "area"]],
+  [T("Anello 3 — collocazione"), ["zona", "quartiere", "sezione", "via",
     "civico", "indirizzo_fonte"]],
 ];
 function etichettaMod(attr, v) {
@@ -1582,19 +1615,19 @@ function etichettaMod(attr, v) {
 async function apriScheda(id) {
   const s = $("scheda");
   s.hidden = false;
-  s.innerHTML = "caricamento…";
+  s.innerHTML = T("caricamento…");
   let row;
   try {
     const r = await conn.query(`SELECT * FROM 'pop.parquet' WHERE id = ${id}`);
-    if (!r.numRows) { s.innerHTML = "individuo non trovato"; return; }
+    if (!r.numRows) { s.innerHTML = T("individuo non trovato"); return; }
     row = r.get(0);
-  } catch (e) { s.innerHTML = "errore: " + e; return; }
+  } catch (e) { s.innerHTML = T("errore:") + " " + e; return; }
   const val = (k) => {
     const v = row[k];
     return v === null || v === undefined || v === "" ? null : String(v);
   };
   let html = `<span class="chiudi" data-chiudi>×</span>` +
-    `<div class="avvertenza">INDIVIDUO SINTETICO — NON ESISTE</div>` +
+    `<div class="avvertenza">${T("INDIVIDUO SINTETICO — NON ESISTE")}</div>` +
     `<div style="font:600 13px ui-monospace,monospace">` +
     `${COMUNE}-${String(id).padStart(7, "0")}</div>`;
   for (const [tit, campi] of GRUPPI) {
@@ -1613,8 +1646,8 @@ async function apriScheda(id) {
   if (avq.length) {
     /* `donor_id` non e' piu' una firma ricostruita dalla 21-upla ma
        l'identificatore VERO del rispondente, scritto dalla pipeline. */
-    html += `<h3>AVQ — donato (${avq.length} su ${N_AVQ}` +
-      (val("donor_id") ? `, donatore ${val("donor_id")}` : "") + `)</h3>` +
+    html += `<h3>` + T`AVQ — donato (${avq.length} su ${N_AVQ}${
+      val("donor_id") ? ", " + T`donatore ${val("donor_id")}` : ""})` + `</h3>` +
       avq.map((k) => {
         const v = Number(row[k]);
         const et = ISTITUZIONI[k.replace("_num", "")] || k.replace("_num", "");
@@ -1624,24 +1657,24 @@ async function apriScheda(id) {
       }).join("");
   }
   html += `<div class="persona">${persona(row, val)}</div>` +
-    `<div class="atl-nota" style="margin-top:.5rem">Nessun indirizzo: il ` +
-    `punto sulla mappa e' casuale dentro la sezione, che e' la risoluzione ` +
-    `a cui il dato si ferma.</div>`;
+    `<div class="atl-nota" style="margin-top:.5rem">` +
+    T`Nessun indirizzo: il punto sulla mappa e' casuale dentro la sezione,
+      che e' la risoluzione a cui il dato si ferma.` + `</div>`;
   s.innerHTML = html;
 }
 function persona(row, val) {
   const p = [];
   const sx = val("sesso");
-  const g = sx === "F" ? "Donna" : "Uomo";
+  const g = sx === "F" ? T("Donna") : T("Uomo");
   const et = (a) => concorda(a, val(a), sx)
     || (val(a) ? etichettaMod(a, val(a)).toLowerCase() : null);
-  p.push(`${g}${val("eta_anni") ? ` di ${val("eta_anni")} anni` : ""}` +
+  p.push(`${g}${val("eta_anni") ? " " + T`di ${val("eta_anni")} anni` : ""}` +
     (val("stato_civile") ? `, ${et("stato_civile")}` : "") + ".");
   if (val("istruzione"))
     p.push(`${etichettaMod("istruzione", val("istruzione"))}` +
       (val("condizione") ? `, ${et("condizione")}` : "") + ".");
   if (val("paese") && val("paese") !== "Italia")
-    p.push(`Cittadinanza ${val("paese")}.`);
+    p.push(T`Cittadinanza ${val("paese")}.`);
   /* L'indirizzo non e' nel bundle: il regime pubblico lo toglie. La zona
      pero' c'e' e ha un nome leggibile — ed e' anche la risoluzione a cui il
      dato dice davvero qualcosa, quindi la frase guadagna in onesta' quel
@@ -1650,11 +1683,11 @@ function persona(row, val) {
   const zn = val("quartiere")
     || (val("zona") ? etichettaMod("zona", val("zona")) : null);
   if (dove || zn)
-    p.push(dove ? `Abita in ${dove}${zn ? `, ${zn}` : ""}.` : `Abita a ${zn}.`);
+    p.push(dove ? T`Abita in ${dove}${zn ? `, ${zn}` : ""}.` : T`Abita a ${zn}.`);
   const f = row["PUNTIFI10_num"];
   if (f !== null && f !== undefined && !Number.isNaN(Number(f)))
-    p.push(`Valuta ${Number(f)} su 10 la fiducia nel governo comunale.`);
-  return "Come la vedrebbe un agente del tier 2: " + p.join(" ");
+    p.push(T`Valuta ${Number(f)} su 10 la fiducia nel governo comunale.`);
+  return T("Come la vedrebbe un agente del tier 2:") + " " + p.join(" ");
 }
 document.addEventListener("click", (e) => {
   if (e.target.closest("[data-chiudi]")) $("scheda").hidden = true;
@@ -1714,22 +1747,22 @@ function pannello(a, dati) {
     const val = delta ? (d.d >= 0 ? "+" : "−") + pct2(Math.abs(d.d)) : pct(d.q);
     return `<div class="riga${sel ? " attiva" : ""}" data-attr="${a.nome}"
                  data-mod="${d.v.replace(/"/g, "&quot;")}"
-                 title="${num(d.n)} sintetici${d.nrif === null ? "" :
-                   " · " + num(d.nrif) + " censuari"}">
+                 title="${T`${num(d.n)} sintetici`}${d.nrif === null ? "" :
+                   " · " + T`${num(d.nrif)} censuari`}">
               <span class="et">${d.et}</span>
               <span class="traccia${senzaFiltro && !delta ? " neutra" : ""}">${t}</span>
               <span class="val">${val}</span></div>`;
   }).join("");
   const nota = [];
   if ((a.nome === "paese" || a.nome === "area") && classePaese() === "D")
-    nota.push("nessuna struttura sub-comunale (tier 0): come le AVQ, "
-              + "ogni variazione spaziale e' compositiva");
+    nota.push(T`nessuna struttura sub-comunale (tier 0): come le AVQ,
+                ogni variazione spaziale e' compositiva`);
   if (dati.rifBlocco) {
-    nota.push(`censimento da ${dati.rifBlocco.vars.join("×")}`);
-    if (dati.scartoMax !== null) nota.push(`scarto max ${pct2(dati.scartoMax)}%`);
-  } else nota.push("nessun dato censuario per questo incrocio");
-  if (attivi.has(a.nome)) nota.push("filtro proprio escluso");
-  if (nascoste) nota.push(`${nascoste} non mostrate`);
+    nota.push(T`censimento da ${dati.rifBlocco.vars.join("×")}`);
+    if (dati.scartoMax !== null) nota.push(T`scarto max ${pct2(dati.scartoMax)}%`);
+  } else nota.push(T("nessun dato censuario per questo incrocio"));
+  if (attivi.has(a.nome)) nota.push(T("filtro proprio escluso"));
+  if (nascoste) nota.push(T`${nascoste} non mostrate`);
   el.innerHTML = `<h2>${a.etichetta}</h2>
      <div class="nota"><span>${nota.join(" · ")}</span>
        <a data-svg="${a.nome}">SVG</a></div>${righe}`;
@@ -1756,20 +1789,21 @@ function disegna(res) {
   }
   const k = manifest.comune;
   $("sottotitolo").textContent =
-    `${num(k.individui)} individui sintetici · ` +
+    T`${num(k.individui)} individui sintetici` + ` · ` +
     `${k.livello ? `${k.zone} ${k.livello}`
-                 : "nessuna articolazione sub-comunale"}` +
-    ` · tier ${k.tier} · marginali in ${res.ms.toFixed(0)} ms`;
+                 : T("nessuna articolazione sub-comunale")}` +
+    ` · ` + T`tier ${k.tier} · marginali in ${res.ms.toFixed(0)} ms`;
   $("sottotitolo").title =
-    `Tier ${k.tier}: ${{
-      0: "nessuna fonte comunale per il paese di cittadinanza",
-      1: "fonte comunale a livello di zona",
-      2: "fonte comunale a livello di zona, con dettaglio di sesso",
-      3: "microdati comunali per sezione di censimento",
-    }[k.tier]}.\n\nIl tier riguarda SOLO il paese di cittadinanza e l'area ` +
-    `di origine. Gli attributi dell'anello 1 — sesso, eta', istruzione, ` +
-    `condizione e gli altri — sono vincolati dal censimento in ogni comune, ` +
-    `qualunque sia il tier.`;
+    T`Tier ${k.tier}: ${{
+      0: T("nessuna fonte comunale per il paese di cittadinanza"),
+      1: T("fonte comunale a livello di zona"),
+      2: T("fonte comunale a livello di zona, con dettaglio di sesso"),
+      3: T("microdati comunali per sezione di censimento"),
+    }[k.tier]}.` + "\n\n" +
+    T`Il tier riguarda SOLO il paese di cittadinanza e l'area
+      di origine. Gli attributi dell'anello 1 — sesso, eta', istruzione,
+      condizione e gli altri — sono vincolati dal censimento in ogni comune,
+      qualunque sia il tier.`;
 
   /* Copertura del riferimento censuario: quale frazione degli incroci
      INTERROGABILI e' osservata. Il denominatore dipende dal livello — 333
@@ -1779,13 +1813,13 @@ function disegna(res) {
   if (cp) {
     $("box-cop").hidden = false;
     $("box-cop").textContent =
-      `· riferimento ${(cp.coperte / cp.totali * 100).toFixed(0)}% degli incroci`;
+      T`· riferimento ${(cp.coperte / cp.totali * 100).toFixed(0)}% degli incroci`;
     $("box-cop").title =
-      `${cp.coperte} incroci osservati su ${cp.totali} interrogabili.\n` +
-      `Constraint set a ${cp.n_vars} variabili: ${cp.vars.join(", ")}.\n\n` +
-      `Il denominatore dipende dal livello — 333 combinazioni con nove ` +
-      `attributi, 96 con sei — quindi i CONTEGGI non sono confrontabili fra ` +
-      `comuni, le PERCENTUALI si'.`;
+      T`${cp.coperte} incroci osservati su ${cp.totali} interrogabili.` + "\n" +
+      T`Constraint set a ${cp.n_vars} variabili: ${cp.vars.join(", ")}.` + "\n\n" +
+      T`Il denominatore dipende dal livello — 333 combinazioni con nove
+        attributi, 96 con sei — quindi i CONTEGGI non sono confrontabili fra
+        comuni, le PERCENTUALI si'.`;
   } else $("box-cop").hidden = true;
   pillole();
 }
@@ -1808,8 +1842,8 @@ function pillole() {
 
 /* ---------- export ----------------------------------------------------- */
 function comeCSV() {
-  const r = [["attributo", "modalita", "n_sintetico", "n_censuario",
-              "quota", "citta", "censimento", "scarto_modello"]];
+  const r = [[T("attributo"), T("modalita"), T("n_sintetico"), T("n_censuario"),
+              T("quota"), T("citta"), T("censimento"), T("scarto_modello")]];
   for (const a of manifest.attributi)
     for (const d of ultimo.get(a.nome) || [])
       r.push([a.etichetta, d.et, d.n, d.nrif === null ? "" : Math.round(d.nrif),
@@ -1817,8 +1851,8 @@ function comeCSV() {
               d.rif === null ? "" : pct2(d.q - d.rif)]);
   if (ultimoFid) {
     r.push([]);
-    r.push(["istituzione", "n", "donatori", "n_eff", "media", "ci_onesta",
-            "ci_ingenua", "italia", "scarto_da_italia"]);
+    r.push([T("istituzione"), "n", T("donatori"), "n_eff", T("media"), T("ci_onesta"),
+            T("ci_ingenua"), T("italia"), T("scarto_da_italia")]);
     for (const [v, s] of ultimoFid)
       r.push([ISTITUZIONI[v], s.n, s.donatori, Math.round(s.neff),
               dec(s.media), dec(s.ci), dec(s.ciNaive),
@@ -1831,12 +1865,12 @@ function comeCSV() {
 }
 function comeLaTeX() {
   const filtro = [...attivi].flatMap(([k, s]) => [...s].map((v) => `${k}=${v}`))
-    .join(", ") || "nessuno";
-  let t = `% Animarium — ${manifest.comune.nome}\n% filtro: ${filtro}\n` +
-    `% n sintetici = ${$("n-sel").textContent}` +
-    ($("box-reale").hidden ? "" : `, censuari = ${$("n-rea").textContent}`) + "\n" +
-    `\\begin{tabular}{llrrrr}\n\\toprule\nAttributo & Modalità & $n$ & Quota & ` +
-    `Città & Censimento \\\\\n\\midrule\n`;
+    .join(", ") || T("nessuno");
+  let t = `% Animarium — ${manifest.comune.nome}\n% ` + T`filtro: ${filtro}` + "\n" +
+    `% ` + T`n sintetici = ${$("n-sel").textContent}` +
+    ($("box-reale").hidden ? "" : ", " + T`censuari = ${$("n-rea").textContent}`) + "\n" +
+    `\\begin{tabular}{llrrrr}\n\\toprule\n` +
+    T`Attributo & Modalità & $n$ & Quota & Città & Censimento` + ` \\\\\n\\midrule\n`;
   let cur = null;
   for (const a of manifest.attributi) {
     for (const d of ultimo.get(a.nome) || []) {
@@ -1849,9 +1883,9 @@ function comeLaTeX() {
   }
   t += "\\bottomrule\n\\end{tabular}\n";
   if (ultimoFid) {
-    t += `\n% Fiducia istituzionale. CI al 95% su n_eff di Kish, non su n.\n` +
-      `\\begin{tabular}{lrrrr}\n\\toprule\nIstituzione & $n$ & $n_{\\rm eff}$ & ` +
-      `Media & IC 95\\% \\\\\n\\midrule\n`;
+    t += `\n% ` + T("Fiducia istituzionale. CI al 95% su n_eff di Kish, non su n.") + "\n" +
+      `\\begin{tabular}{lrrrr}\n\\toprule\n` +
+      T("Istituzione & $n$ & $n_{\\rm eff}$ & Media & IC 95\\%") + ` \\\\\n\\midrule\n`;
     for (const [v, s] of ultimoFid)
       t += `${ISTITUZIONI[v]} & ${s.n} & ${Math.round(s.neff)} & ` +
            `${dec(s.media)} & $\\pm${dec(s.ci)}$ \\\\\n`;
@@ -1887,7 +1921,7 @@ function comeSVG(nome) {
     `<text x="${L}" y="${yb + 13}" font-size="9.5" fill="#6b6862">0</text>` +
     `<text x="${px(scala)}" y="${yb + 13}" font-size="9.5" fill="#6b6862" text-anchor="end">${pct(scala)}</text>` +
     `<text x="0" y="${alt - 3}" font-size="9" fill="#6b6862">` +
-    `barra: sottopopolazione · tacca: citta' intera · rombo: censimento</text></svg>`;
+    T("barra: sottopopolazione · tacca: citta' intera · rombo: censimento") + `</text></svg>`;
   return s;
 }
 function mostra(t, x) {
@@ -2032,11 +2066,11 @@ $("citta").addEventListener("change", (e) => {
         cs.map((c) => `<option value="${c.codice}"` +
           `${c.codice === COMUNE ? " selected" : ""}>` +
           `${c.nome} — ${num(c.individui)}` +
-          `${c.livello ? "" : " · non articolato"}</option>`).join("") +
+          `${c.livello ? "" : " · " + T("non articolato")}</option>`).join("") +
         `</optgroup>`).join("");
   } catch (e) {
     $("citta").innerHTML = `<option>${COMUNE}</option>`;
-    avviso("", "<b>Indice delle citta' assente</b>. " +
+    avviso("", T("<b>Indice delle citta' assente</b>.") + " " +
       "<code>python build/build_indice.py</code>");
   }
   try {
@@ -2044,7 +2078,7 @@ $("citta").addEventListener("change", (e) => {
     if (!r.ok) throw new Error(r.status + " su manifest.json");
     manifest = await r.json();
   } catch (e) {
-    avviso("errore", `<b>Manifest non trovato.</b> ${e}<br>` +
+    avviso("errore", `${T("<b>Manifest non trovato.</b>")} ${e}<br>` +
       `<code>python build/manifest_min.py ${COMUNE}</code>`);
     return;
   }
@@ -2095,7 +2129,7 @@ $("citta").addEventListener("change", (e) => {
       new URL(BASE + manifest.comune.parquet, location.href).href,
       duckdb.DuckDBDataProtocol.HTTP, false);
   } catch (e) {
-    avviso("errore", `<b>DuckDB non si e' avviato.</b> ${e}`);
+    avviso("errore", `${T("<b>DuckDB non si e' avviato.</b>")} ${e}`);
     return;
   }
   $("stato").hidden = false;
