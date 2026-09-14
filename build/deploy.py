@@ -30,6 +30,7 @@ Cosa finisce online
     index.html          il pannello (rinominato)
     en/index.html       lo stesso pannello in inglese (dizionario build/i18n/en.json
                         inlined, <html lang="en">; vedi build/i18n_check.py)
+    preprint.pdf        il preprint, anche in en/ perche' il link e' relativo
     smoke.html          lo smoke test, per verificare che l'host supporti
                         le richieste Range: senza, DuckDB scaricherebbe i
                         file interi e l'app sarebbe lenta senza dire perche'
@@ -143,14 +144,22 @@ def main():
     shutil.copytree(bundle, os.path.join(out, "bundle"),
                     ignore=shutil.ignore_patterns("*.tar.gz"))
 
-    # medie_nazionali.jsonsta arriva da build_bundle
-    # ; se manca, il pannello non mostra le tacche di riferimento e lo
+    # medie_nazionali.json arriva da build_bundle; se manca, il pannello non mostra le tacche di riferimento e lo
     # dichiara invece di tacere.
     if not os.path.exists(os.path.join(out, "bundle", "medie_nazionali.json")):
         print("[avviso] manca bundle/medie_nazionali.json: le tacche delle "
               "medie nazionali non compariranno")
         print("         lo copia build_bundle.py da "
               "$GSP_ROOT/fonti/derivati/ (default ~/progetti/gsp)")
+    # Il preprint sta accanto a index.html. Il link nel pannello e' relativo
+    # (href="preprint.pdf"), quindi dalla pagina inglese viene cercato in
+    # en/: duplicare 380 KB e' piu' semplice che gestire due href diversi.
+    f_pdf = os.path.join("build", "preprint.pdf")
+    if os.path.exists(f_pdf):
+        shutil.copy(f_pdf, os.path.join(out, "preprint.pdf"))
+        shutil.copy(f_pdf, os.path.join(out, "en", "preprint.pdf"))
+    else:
+        print("[avviso] manca build/preprint.pdf: il link al preprint dara' 404")
     open(os.path.join(out, ".nojekyll"), "w").close()
 
     # --- inventario -------------------------------------------------------
@@ -194,11 +203,6 @@ def main():
         print(f"  http://localhost:8000/en/index.html   (inglese)")
         print(f"\nPer pubblicare: python build/deploy.py --cloudflare")
         return
-
-    for extra in ("preprint.pdf",):
-        f = os.path.join("build", extra)
-        if os.path.exists(f):
-            shutil.copy(f, os.path.join(out, extra))
 
     # --- pubblicazione ----------------------------------------------------
     repo = args.repo or esegui(["git", "remote", "get-url", "origin"], RADICE)
