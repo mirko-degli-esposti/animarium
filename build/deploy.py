@@ -195,6 +195,11 @@ def main():
         print(f"\nPer pubblicare: python build/deploy.py --cloudflare")
         return
 
+    for extra in ("preprint.pdf",):
+        f = os.path.join("build", extra)
+        if os.path.exists(f):
+            shutil.copy(f, os.path.join(out, extra))
+
     # --- pubblicazione ----------------------------------------------------
     repo = args.repo or esegui(["git", "remote", "get-url", "origin"], RADICE)
     print(f"\npubblico su {repo} ramo {args.branch}")

@@ -43,6 +43,19 @@
             border: 1px solid var(--linea); border-radius: 3px; }
   .lingua:hover { color: var(--inchiostro); border-color: var(--inchiostro); }
 
+  .presenta { padding: .55rem 1.5rem; font-size: 13px; line-height: 1.5;
+              border-bottom: 1px solid var(--linea); color: var(--inchiostro); }
+  .presenta a { color: var(--accento); }
+  details.guida { padding: .35rem 1.5rem; font-size: 12.5px;
+                  border-bottom: 1px solid var(--linea); }
+  details.guida summary { cursor: pointer; color: var(--tenue);
+                  font-size: 12.5px; list-style: none; }
+  details.guida summary::before { content: "▸ "; }
+  details.guida[open] summary::before { content: "▾ "; }
+  details.guida ol { margin: .4rem 0 .3rem 1.2rem; padding: 0; line-height: 1.5; }
+  details.guida li { margin-bottom: .2rem; }
+  details.guida kbd { font: 600 11.5px ui-monospace, monospace;
+                  background: #f0ece3; padding: 0 .3rem; border-radius: 2px; }
   .avviso-globale { padding: .6rem 1.5rem; font-size: 12.5px; line-height: 1.45;
                     background: #f3ece2; border-bottom: 1px solid #d8c9b4; }
 
@@ -234,6 +247,45 @@
   <span class="sub" id="sottotitolo">caricamento…</span>
   <a class="lingua" id="lingua" href="en/">EN</a>
 </header>
+
+<div class="presenta" data-i18n>
+  <b>Animarium</b> mostra popolazioni sintetiche di comuni italiani —
+  individui generati a massima entropia dai vincoli del censimento, con
+  attributi di salute e fiducia imputati dall'indagine ISTAT «Aspetti della
+  vita quotidiana». È un progetto di ricerca di Mirko Degli Esposti,
+  <i>Science City Lab</i>, Dipartimento di Fisica e Astronomia, Università di
+  Bologna. Il metodo è descritto nel
+  <a href="preprint.pdf" target="_blank" rel="noopener">preprint</a>.
+</div>
+
+<details class="guida" data-i18n>
+  <summary>Come si esplora — tre gesti che non si scoprono da soli</summary>
+  <ol>
+    <li><b>Si filtra cliccando le barre.</b> Ogni clic aggiunge una
+      condizione; le condizioni attive sono le pillole in alto, e la
+      <kbd>×</kbd> le toglie. Ogni pannello applica tutti i filtri tranne il
+      proprio, così cliccare «Femmine» non fa collassare il pannello del
+      sesso al 100%.</li>
+    <li><b>Per arrivare a un individuo:</b> <kbd>mappa</kbd>, poi il modo
+      <kbd>punti</kbd>, poi un clic su un punto. Si apre la scheda con tutti
+      gli attributi, ciascuno col suo livello di garanzia — vincolato dal
+      censimento, allocato, derivato, donato dall'indagine — e la frase con
+      cui un agente lo descriverebbe. Il percorso è in tre passi di proposito:
+      la scheda è la vista più «persona» del sistema, e non deve essere a
+      portata di un clic dalla prima pagina.</li>
+    <li><b>Per vedere una famiglia:</b> <kbd>nuclei</kbd>, poi «mostrami una
+      famiglia a caso». Rispetta il filtro attivo, quindi «una famiglia con
+      almeno uno straniero in questo quartiere» si ottiene filtrando e
+      ripescando. Ripescare più volte è il modo più rapido per farsi un'idea
+      della qualità.</li>
+  </ol>
+  <b>Cosa significano i tre segni nei pannelli:</b> la barra è la
+  sottopopolazione filtrata, la tacca la città intera, il rombo il
+  censimento. Lo scarto dalla tacca è associazione, lo scarto dal rombo è
+  errore del modello — e dove il rombo manca il censimento non vincola quel
+  incrocio, e il pannello lo dice. Lo stato è tutto nell'indirizzo: una
+  vista si manda copiando l'URL.
+</details>
 
 <div class="avviso-globale" data-i18n>
   <b>Popolazione sintetica.</b> Nessuno degli individui mostrati esiste, e
