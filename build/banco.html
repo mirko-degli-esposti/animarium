@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banco — corse sperimentali</title>
+<!--
+  banco.html — Animarium, il banco di prova di GSP (gsp.banco), M3.
+
+  Legge ~/progetti/laboratorio (parametro ?lab=, default ../../laboratorio
+  rispetto a build/): indice.json, corse/<id>/esperimento.yaml,
+  corse/<id>/misure/*.json, confronti/<A>__<B>.json. Niente DuckDB qui: i
+  Parquet li apre il pannello, che riceve il bundle della corsa con
+  ?bundle=. Tre viste, tutte nell'URL: elenco (nessun parametro),
+  ?corsa=<id>, ?a=<id>&b=<id>.
+
+  Servire dalla radice che contiene sia animarium/ sia laboratorio/:
+      cd ~/progetti && python animarium/build/serve_range.py
+      http://localhost:8000/animarium/build/banco.html
+-->
+<style>
+  :root { --fg:#1a1a1a; --bg:#fff; --mut:#666; --lin:#ddd; --acc:#0b57d0; --warn:#b3261e; --ok:#1b6e3a; --card:#f6f7f9; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e8e8e8; --bg:#121212; --mut:#9a9a9a; --lin:#333; --acc:#8ab4f8; --warn:#f28b82; --ok:#81c995; --card:#1d1f22; } }
+  body { margin:0; padding:16px; font:14px/1.45 system-ui, sans-serif; color:var(--fg); background:var(--bg); max-width:1200px; margin-inline:auto; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:16px; margin:24px 0 8px; } h3 { font-size:14px; margin:16px 0 6px; color:var(--mut); }
+  a { color:var(--acc); } .mut { color:var(--mut); } .warn { color:var(--warn); } .ok { color:var(--ok); }
+  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--lin); vertical-align:top; }
+  th { font-weight:600; color:var(--mut); font-size:12px; } td.n, th.n { text-align:right; }
+  tr.sopra td { font-weight:600; }
+  .card { background:var(--card); border-radius:8px; padding:12px 14px; margin:8px 0; }
+  .riga { display:flex; flex-wrap:wrap; gap:12px 28px; } .riga > div { min-width:140px; }
+  .k { font-size:11px; color:var(--mut); text-transform:uppercase; letter-spacing:.03em; } .v { font-size:15px; }
+  pre { background:var(--card); padding:10px; border-radius:6px; overflow:auto; font-size:12px; max-height:420px; }
+  .barra { position:relative; height:10px; background:var(--lin); border-radius:5px; margin:6px 0; }
+  .barra i { position:absolute; top:-3px; width:3px; height:16px; background:var(--acc); }
+  .barra i.pav { background:var(--ok); } .barra i.ind { background:var(--warn); }
+  select, button { font:inherit; padding:4px 8px; }
+  nav a { margin-right:14px; }
+  code { font-size:12px; }
+</style>
+</head>
+<body>
+<h1>Banco <span class="mut">— corse sperimentali di GSP</span></h1>
+<nav><a href="?">elenco</a> <a href="pannello_marginali.html">pannello della release</a> <span id="lab-info" class="mut"></span></nav>
+<div id="app"><p class="mut">carico l'indice…</p></div>
+
+<script>
+const P = new URLSearchParams(location.search);
+const LAB = (P.get("lab") || "../../laboratorio").replace(/\/$/, "");
+const $app = document.getElementById("app");
+const LOC = "it-IT";
+const num = (n, k = 0) => (n == null || Number.isNaN(n)) ? "—" : Number(n).toLocaleString(LOC, { minimumFractionDigits: k, maximumFractionDigits: k });
+const pct = (x, k = 2) => x == null ? "—" : (100 * x).toLocaleString(LOC, { minimumFractionDigits: k, maximumFractionDigits: k }) + " %";
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const urlPannello = (c) => `pannello_marginali.html?bundle=${encodeURIComponent(LAB + "/corse/" + c.id + "/bundle")}&comune=${c.comune}`;
+
+async function json(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} su ${url}`);
+  return r.json();
+}
+async function testo(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} su ${url}`);
+  return r.text();
+}
+
+/* ---------- elenco ---------------------------------------------------- */
+function elenco(ix) {
+  const corse = ix.corse;
+  const righe = corse.map((c) => `<tr>
+    <td><a href="?corsa=${encodeURIComponent(c.id)}">${esc(c.id)}</a></td>
+    <td>${esc(c.nome)} <span class="mut">${c.comune}</span></td>
+    <td>${esc(c.livello_eff)}</td><td>${c.anelli}</td>
+    <td>${esc(c.manopole) || "<span class='mut'>produzione</span>"}</td>
+    <td class="${c.stato === "finita" ? "ok" : "warn"}">${c.stato}</td>
+    <td class="n">${num(c.tempo_s)} s</td>
+    <td class="n">${c.mre_oss == null ? "—" : pct(c.mre_oss) + " / " + pct(c.mre_att)}</td>
+    <td class="n">${c.posizione_Z3 == null ? "—" : pct(c.posizione_Z3, 0)}</td>
+    <td class="n">${num(c.n_eff_salute)}</td>
+    <td>${c.bundle ? `<a href="${urlPannello(c)}">pannello</a>` : "<span class='mut'>no bundle</span>"}</td>
+    <td class="mut">${esc(c.commit)}${c.git_pulito ? "" : " *"}</td>
+  </tr>`).join("");
+  const opz = corse.map((c) => `<option value="${esc(c.id)}">${esc(c.id)}</option>`).join("");
+  $app.innerHTML = `
+    <p class="mut">${corse.length} corse · indice generato ${esc(ix.generato)} · una corsa è un manifesto <code>esperimento.yaml</code> con le manopole dichiarate come differenze dalla produzione; «*» = albero di gsp non pulito, corsa non citabile per commit.</p>
+    <table><thead><tr><th>corsa</th><th>comune</th><th>livello</th><th>anelli</th><th>manopole</th><th>stato</th><th class="n">tempo</th><th class="n">MRE oss / att</th><th class="n">hold-out Z3</th><th class="n">n_eff SALUTE</th><th>viewer</th><th>commit</th></tr></thead>
+    <tbody>${righe}</tbody></table>
+    <h2>Confronto fra due corse dello stesso comune</h2>
+    <form class="card" onsubmit="location.search='?a='+encodeURIComponent(this.a.value)+'&b='+encodeURIComponent(this.b.value);return false">
+      A <select name="a">${opz}</select> &nbsp; B <select name="b">${opz}</select> &nbsp; <button>confronta</button>
+      <span class="mut">— legge <code>confronti/A__B.json</code>, prodotto da <code>python -m gsp.banco tvd A B --nullo C D</code></span>
+    </form>`;
+}
+
+/* ---------- corsa ------------------------------------------------------ */
+async function corsa(ix, id) {
+  const c = ix.corse.find((x) => x.id === id);
+  if (!c) { $app.innerHTML = `<p class="warn">corsa ${esc(id)} non in indice.</p>`; return; }
+  const base = `${LAB}/corse/${id}`;
+  const campo = (k, v) => `<div><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  let html = `<h2>${esc(c.id)}</h2>
+  <div class="card riga">
+    ${campo("comune", `${esc(c.nome)} ${c.comune}`)}${campo("livello", esc(c.livello_eff))}
+    ${campo("anelli", c.anelli + (c.ereditati ? ` <span class="mut">(${c.ereditati} prodotti ereditati da ${esc(c.base)})</span>` : ""))}
+    ${campo("pool", num(c.pool))}${campo("manopole", esc(c.manopole) || "<span class='mut'>nessuna: produzione</span>")}
+    ${campo("stato", `<span class="${c.stato === "finita" ? "ok" : "warn"}">${c.stato}</span> · ${num(c.tempo_s)} s`)}
+    ${campo("commit gsp", `${esc(c.commit)} ${c.git_pulito ? "<span class='ok'>albero pulito</span>" : "<span class='warn'>albero non pulito</span>"}`)}
+    ${campo("note", esc(c.note) || "—")}
+  </div>
+  <p>${c.bundle ? `<a href="${urlPannello(c)}"><b>apri nel pannello</b></a> (bundle in regime pubblico) · ` : "<span class='mut'>nessun bundle: <code>python -m gsp.banco bundle " + esc(id) + "</code></span> · "}
+     <a href="${base}/esperimento.yaml">esperimento.yaml</a> · <a href="?a=${encodeURIComponent(id)}">confronta con…</a></p>`;
+  const mis = new Set(c.misure || []);
+  const letture = [];
+  if (mis.has("vincoli")) letture.push(json(`${base}/misure/vincoli.json`).then(vincoli).catch(errore("vincoli")));
+  for (const k of mis) if (k.startsWith("holdout_")) letture.push(json(`${base}/misure/${k}.json`).then((h) => holdout(h, k)).catch(errore(k)));
+  if (mis.has("donor")) letture.push(json(`${base}/misure/donor.json`).then(donor).catch(errore("donor")));
+  if (mis.has("sezioni")) letture.push(json(`${base}/misure/sezioni.json`).then(sezioni).catch(errore("sezioni")));
+  if (mis.has("nuclei")) letture.push(json(`${base}/misure/nuclei.json`).then(nuclei).catch(errore("nuclei")));
+  if (!letture.length) html += `<p class="mut">nessuna misura: <code>python -m gsp.banco misura ${esc(id)}</code></p>`;
+  const blocchi = await Promise.all(letture);
+  html += blocchi.join("");
+  html += `<h2>Manifesto</h2><pre id="yaml" class="mut">…</pre>`;
+  $app.innerHTML = html;
+  testo(`${base}/esperimento.yaml`).then((t) => { document.getElementById("yaml").textContent = t; }).catch(() => {});
+}
+const errore = (k) => (e) => `<h2>${k}</h2><p class="warn">${esc(e.message)}</p>`;
+
+function vincoli(v) {
+  const g = v.globale;
+  const righe = v.blocchi.map((b) => `<tr><td>${esc(b.blocco)}</td><td class="n">${num(b.celle)}</td><td class="n">${pct(b.MRE_oss)}</td><td class="n">${pct(b.MRE_att)}</td><td class="n">${num(b.z_med, 2)}</td><td class="n">${num(b.z_max, 1)}</td><td class="n">${b.n_z3}</td><td class="n">${b.zeri_violati}</td></tr>`).join("");
+  return `<h2>Anello 1 — vincoli contro il pavimento</h2>
+  <div class="card riga">
+    <div><div class="k">celle α>0</div><div class="v">${num(g.celle)}</div></div>
+    <div><div class="k">MRE osservato / atteso</div><div class="v">${pct(g.mre_oss)} / ${pct(g.mre_att)}</div></div>
+    <div><div class="k">|z| medio (atteso 0,80)</div><div class="v">${num(g.z_abs_medio, 3)}</div></div>
+    <div><div class="k">sd(z) (atteso 1)</div><div class="v">${num(g.sd_z, 3)}</div></div>
+    <div><div class="k">|z| > 3 (atteso 0,27 %)</div><div class="v">${pct(g.quota_z3)}</div></div>
+    <div><div class="k">zeri violati</div><div class="v ${g.zeri_violati ? "warn" : "ok"}">${g.zeri_violati}</div></div>
+    <div><div class="k">|z| max (cella attesa)</div><div class="v">${num(g.z_max, 1)} (${num(g.z_max_atteso, 1)})</div></div>
+  </div>
+  <p class="mut">Se MRE osservato e atteso coincidono, l'errore per cella è il pavimento di rumore. sd(z) sopra 1: campione sovradisperso.</p>
+  <table><thead><tr><th>blocco</th><th class="n">celle</th><th class="n">MRE oss</th><th class="n">MRE att</th><th class="n">|z| med</th><th class="n">|z| max</th><th class="n">z>3</th><th class="n">zeri viol.</th></tr></thead><tbody>${righe}</tbody></table>`;
+}
+function holdout(h, k) {
+  const c = h.comuni && h.comuni[0];
+  if (!c) return `<h2>${k}</h2><p class="mut">nessun risultato</p>`;
+  const span = c.tvd_indipendenza - c.tvd_pavimento;
+  const pos = (x) => span > 0 ? Math.max(0, Math.min(1, (x - c.tvd_pavimento) / span)) : 0;
+  return `<h2>Hold-out ${esc(h.blocco)} — ricostruzione del blocco tolto</h2>
+  <div class="card">
+    <div class="riga">
+      <div><div class="k">TVD pavimento (blocco vincolato)</div><div class="v ok">${num(c.tvd_pavimento, 4)}</div></div>
+      <div><div class="k">TVD hold-out</div><div class="v">${num(c.tvd_holdout, 4)}</div></div>
+      <div><div class="k">TVD indipendenza (dato il sesso)</div><div class="v warn">${num(c.tvd_indipendenza, 4)}</div></div>
+      <div><div class="k">posizione nel divario</div><div class="v">${c.posizione == null ? "—" : pct(c.posizione, 0)}</div></div>
+      <div><div class="k">celle</div><div class="v">${num(c.celle)}</div></div>
+    </div>
+    <div class="barra"><i class="pav" style="left:0"></i><i style="left:${(100 * pos(c.tvd_holdout)).toFixed(1)}%"></i><i class="ind" style="left:calc(100% - 3px)"></i></div>
+    <p class="mut">${esc(h.nota)} Vicino al pavimento: il blocco era ridondante. Vicino all'indipendenza: porta informazione che gli altri blocchi non danno. La posizione varia col seme (~10 punti su Cesena).</p>
+  </div>`;
+}
+function donor(d) {
+  const righe = d.variabili.map((v) => `<tr><td>${esc(v.variabile)}</td><td class="n">${pct(v.copertura, 1)}</td><td class="n">${num(v.n)}</td><td class="n">${num(v.distinti)}</td><td class="n">${num(v.n_eff)}</td><td class="n">${num(v.banda, 1)}</td></tr>`).join("");
+  const r = d.riuso || {};
+  return `<h2>Anello 2 — donatori AVQ e n_eff</h2>
+  <div class="card riga">
+    <div><div class="k">individui</div><div class="v">${num(d.individui)}</div></div>
+    <div><div class="k">firme distinte</div><div class="v">${num(d.firme)}</div></div>
+    <div><div class="k">riuso medio · mediana · max</div><div class="v">${num(r.medio, 1)} · ${num(r.mediana)} · ${num(r.max)}</div></div>
+    <div><div class="k">firme confinate alla cella</div><div class="v">${d.collasso ? pct(d.collasso.confinate, 1) : "—"}</div></div>
+  </div>
+  <table><thead><tr><th>variabile</th><th class="n">copertura</th><th class="n">n</th><th class="n">distinti</th><th class="n">n_eff</th><th class="n">banda ×</th></tr></thead><tbody>${righe}</tbody></table>
+  <p class="mut">banda × = √(n/n_eff): quante volte troppo stretta sarebbe la banda calcolata ignorando i donatori.</p>`;
+}
+function sezioni(s) {
+  const righe = Object.entries(s.per_sezione).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${num(v.mae, 2)}</td><td class="n">${num(v.media_censimento, 1)}</td><td class="n">${num(v.corr, 4)}</td><td class="n">${num(v.totale_sintetico)} / ${num(v.totale_censimento)}</td></tr>`).join("");
+  return `<h2>Anello 3 — allocazione per sezione</h2>
+  <table><thead><tr><th></th><th class="n">MAE per sezione</th><th class="n">media censimento</th><th class="n">corr</th><th class="n">totale sintetico / censimento</th></tr></thead><tbody>${righe}</tbody></table>
+  <p class="mut">fonte: ${esc(s.fonte)}</p>`;
+}
+function nuclei(n) {
+  const sc = n.stato_civile || {};
+  return `<h2>Anello 4 — nuclei</h2>
+  <div class="card riga">
+    <div><div class="k">nuclei</div><div class="v">${num(n.nuclei)}</div></div>
+    <div><div class="k">ampiezza media</div><div class="v">${num(n.individui / Math.max(n.nuclei, 1), 2)}</div></div>
+    <div><div class="k">senza ripiego</div><div class="v">${pct(n.senza_ripiego, 1)}</div></div>
+    <div><div class="k">non collocati</div><div class="v">${pct(n.quota_non_collocati, 2)}</div></div>
+    <div><div class="k">coppie omogenee</div><div class="v">${pct(n.coppie_omogenee, 1)}</div></div>
+    <div><div class="k">coniugati incoerenti</div><div class="v">${sc.incoerenti == null ? "—" : pct(sc.incoerenti, 1)}</div></div>
+    <div><div class="k">seme</div><div class="v">${esc(n.seme)}</div></div>
+  </div>`;
+}
+
+/* ---------- confronto -------------------------------------------------- */
+async function confronto(ix, a, b) {
+  const A = ix.corse.find((x) => x.id === a), B = b && ix.corse.find((x) => x.id === b);
+  if (!A) { $app.innerHTML = `<p class="warn">corsa ${esc(a)} non in indice.</p>`; return; }
+  if (!B) {
+    const opz = ix.corse.filter((x) => x.comune === A.comune && x.id !== a).map((x) => `<option value="${esc(x.id)}">${esc(x.id)}</option>`).join("");
+    $app.innerHTML = `<h2>Confronta ${esc(a)} con…</h2><form class="card" onsubmit="location.search='?a=${encodeURIComponent(a)}&b='+encodeURIComponent(this.b.value);return false"><select name="b">${opz}</select> <button>confronta</button></form>`;
+    return;
+  }
+  const testa = (k, f) => `<tr><td>${k}</td><td class="n">${f(A)}</td><td class="n">${f(B)}</td></tr>`;
+  let html = `<h2>Confronto</h2>
+  <table><thead><tr><th></th><th class="n"><a href="?corsa=${encodeURIComponent(a)}">${esc(a)}</a></th><th class="n"><a href="?corsa=${encodeURIComponent(b)}">${esc(b)}</a></th></tr></thead><tbody>
+    ${testa("livello", (c) => esc(c.livello_eff))}${testa("manopole", (c) => esc(c.manopole) || "produzione")}
+    ${testa("MRE oss / att", (c) => c.mre_oss == null ? "—" : pct(c.mre_oss) + " / " + pct(c.mre_att))}
+    ${testa("sd(z)", (c) => num(c.sd_z, 3))}${testa("hold-out Z3, posizione", (c) => c.posizione_Z3 == null ? "—" : pct(c.posizione_Z3, 0))}
+    ${testa("n_eff SALUTE", (c) => num(c.n_eff_salute))}${testa("MAE sezione", (c) => num(c.mae_sezione_pop, 2))}
+    ${testa("nuclei · coniugati incoerenti", (c) => num(c.nuclei) + " · " + (c.coniugati_incoerenti == null ? "—" : pct(c.coniugati_incoerenti, 1)))}
+    ${testa("pannello", (c) => c.bundle ? `<a href="${urlPannello(c)}">apri</a>` : "—")}
+  </tbody></table>`;
+  if (A.comune !== B.comune) { $app.innerHTML = html + `<p class="warn">comuni diversi: il confronto TVD vale solo fra corse dello stesso comune.</p>`; return; }
+  let r = null;
+  for (const [x, y] of [[a, b], [b, a]]) {
+    try { r = await json(`${LAB}/confronti/${x}__${y}.json`); break; } catch (e) {}
+  }
+  if (!r) {
+    html += `<h2>TVD su marginali e incroci</h2><p class="mut">nessun confronto calcolato: <code>python -m gsp.banco tvd ${esc(a)} ${esc(b)} --nullo C D</code> (C e D: due repliche a seme diverso, il pavimento)</p>`;
+    $app.innerHTML = html; return;
+  }
+  const nullo = (r.nullo && r.nullo.tvd) || null;
+  const righe = Object.entries(r.tvd).sort((p, q) => q[1] - p[1]).map(([k, v]) => {
+    const n = nullo ? nullo[k] : null, rap = n ? v / n : null;
+    return `<tr class="${rap != null && rap > 2 ? "sopra" : ""}"><td>${esc(k)}</td><td class="n">${num(v, 4)}</td>${nullo ? `<td class="n">${num(n, 4)}</td><td class="n">${rap == null ? "—" : num(rap, 1)}</td>` : ""}</tr>`;
+  }).join("");
+  html += `<h2>TVD su marginali e incroci a due — ${esc(r.a)} contro ${esc(r.b)}</h2>
+  <p class="mut">n ${num(r.n_a)} / ${num(r.n_b)} · ${r.variabili.length} variabili, ${Object.keys(r.tvd).length} combinazioni${nullo ? ` · nullo: ${esc(r.nullo.c)} / ${esc(r.nullo.d)} (repliche a seme diverso); in grassetto i rapporti sopra 2` : " · <span class='warn'>senza nullo: non si legge</span>"}${r.saltate.length ? ` · saltate: ${esc(r.saltate.join(", "))}` : ""}</p>
+  <table><thead><tr><th>variabili</th><th class="n">TVD</th>${nullo ? "<th class='n'>nullo</th><th class='n'>×</th>" : ""}</tr></thead><tbody>${righe}</tbody></table>`;
+  $app.innerHTML = html;
+}
+
+/* ---------- avvio ------------------------------------------------------ */
+(async function () {
+  document.getElementById("lab-info").textContent = `laboratorio: ${LAB}`;
+  let ix;
+  try { ix = await json(`${LAB}/indice.json`); }
+  catch (e) { $app.innerHTML = `<p class="warn">indice non trovato (${esc(e.message)}). Generarlo con <code>python -m gsp.banco indice</code>; servire dalla cartella che contiene animarium/ e laboratorio/, oppure passare <code>?lab=&lt;url&gt;</code>.</p>`; return; }
+  if (P.get("corsa")) await corsa(ix, P.get("corsa"));
+  else if (P.get("a")) await confronto(ix, P.get("a"), P.get("b"));
+  else elenco(ix);
+})();
+</script>
+</body>
+</html>

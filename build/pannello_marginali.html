@@ -533,6 +533,10 @@ let RADICE = "../bundle", BASE = "";
    JSON.parse a valle troverebbe un `<`. Quindi si accetta la risposta solo
    se e' davvero JSON, non solo se e' 200. In locale non cambia nulla. */
 async function trovaBundle() {
+  /* ?bundle=<url>: un bundle diverso da quello della release, es. una corsa
+     del banco di GSP (corse/<id>/bundle). Stesso layout, stesso pannello:
+     la vista di un esperimento si cita con lo stesso URL. */
+  if (P.get("bundle")) return P.get("bundle").replace(/\/$/, "");
   for (const r of ["bundle", "../bundle"]) {
     try {
       const h = await fetch(`${r}/comuni.json`, { method: "HEAD" });
@@ -1227,6 +1231,7 @@ function leggiURL() {
 }
 function scriviURL() {
   const p = new URLSearchParams();
+  if (P.get("bundle")) p.set("bundle", P.get("bundle"));
   p.set("comune", COMUNE);
   // esplicito, non condizionale come gli altri: il default e' ACCESO,
   // quindi l'assenza del parametro significherebbe "aperto" e chiudere
@@ -2096,7 +2101,8 @@ $("btn-tex").addEventListener("click", () => mostra("LaTeX", comeLaTeX()));
 $("btn-copia").addEventListener("click", () =>
   navigator.clipboard.writeText($("finestra-txt").value));
 $("citta").addEventListener("change", (e) => {
-  location.search = "?comune=" + e.target.value;
+  location.search = (P.get("bundle") ? "?bundle=" + encodeURIComponent(P.get("bundle")) + "&" : "?")
+    + "comune=" + e.target.value;
 });
 
 /* ---------- avvio ------------------------------------------------------ */

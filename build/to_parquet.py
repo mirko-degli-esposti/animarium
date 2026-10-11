@@ -67,6 +67,13 @@ Uso
     python to_parquet.py 036023
     python to_parquet.py 036023 --row-group 20000
     python to_parquet.py 034027 --sort sezione --no-encodings
+    python to_parquet.py 037006 --pop-file <corsa>/popolazione_K9C_senza_Z3_avq_full.csv \
+        --nuclei-dir <corsa>/nuclei --out <corsa>/bundle/comuni/037006/pop.parquet
+
+v2.1 (11/10/2026, banco M3): --pop-file vale anche in regime pubblico (prima
+era ignorato e si risolveva la produzione), e --nuclei-dir indica dove
+stanno i nuclei; il livello si legge dal nome del file. Serve alle corse
+del banco di GSP (gsp.banco). Senza i due flag nulla cambia.
 """
 
 from __future__ import annotations
@@ -127,8 +134,9 @@ def risolvi(comune, anno, pop_file, out):
         nome = G.resolve_pop_file(cdir, suffisso="_avq_full",
                                   escludi=["K10C"])
         pop_file = os.path.join(cdir, nome)
-        m = re.search(r"popolazione_(K\d+C)_", nome)
-        livello = m.group(1) if m else "?"
+    m = re.search(r"popolazione_(K\d+C(?:_senza_[A-Za-z0-9_]+?)?)_avq",
+                  os.path.basename(pop_file))
+    livello = m.group(1) if m else "?"
     if not os.path.exists(pop_file):
         sys.exit(f"errore: file non trovato: {pop_file}")
     if out is None:
@@ -185,6 +193,8 @@ def main():
                     help="NON applica il regime pubblico: tiene via, civico "
                          "e coordinate esatte. Il file risultante non e' "
                          "diffondibile — serve solo a diagnostica locale.")
+    ap.add_argument("--nuclei-dir", default=None,
+                    help="cartella con nuclei_<comune>.csv (default data/nuclei di GSP)")
     ap.add_argument("--senza-nuclei", action="store_true",
                     help="non includere l'anello 4. Di default `nucleo` e "
                          "`ruolo` ci sono, se il file dei nuclei esiste: un "
@@ -219,7 +229,9 @@ def main():
         p = pd.read_csv(src, low_memory=False, dtype=dtypes)
     else:
         p = I.esporta_pubblico(comune=args.comune, anno=int(args.anno),
-                               con_nuclei=not args.senza_nuclei)
+                               con_nuclei=not args.senza_nuclei,
+                               pop_file=args.pop_file,
+                               nuclei_dir=args.nuclei_dir)
         for c in STRINGHE + AVQ:
             if c in p.columns:
                 p[c] = p[c].astype("string")

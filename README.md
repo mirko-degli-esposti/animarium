@@ -28,7 +28,7 @@ report, Part I.7.
 
 ---
 
-## Two ways in
+## Three ways in
 
 **A. You have the bundle** (downloaded from the Zenodo dataset, or built by
 someone else). No Python dependency on GSP is needed.
@@ -65,6 +65,18 @@ The **public regime** is applied in `to_parquet.py` through
 enforced: no name, no street or civic number, coordinates randomised within
 the census section, `donor_id` dropped. What leaves the machine is what you
 see online.
+
+**C. You are running experiments with GSP's `gsp.banco`** (the lab: isolated
+runs with knobs, under `~/progetti/laboratorio`). `python -m gsp.banco bundle
+<id>` builds, with the same four scripts, a bundle in the run's folder, in the
+public regime; `build/banco.html` lists the runs, their measurements and the
+comparisons, and opens any run in the panel through `?bundle=<url>`. Serve
+from the folder that contains both repos:
+
+```bash
+cd ~/progetti && python animarium/build/serve_range.py
+# open http://localhost:8000/animarium/build/banco.html
+```
 
 **Publishing** — one command, which assembles `deploy/` from the bundle on
 disk and hands it to Wrangler, so that assembly and upload cannot drift
