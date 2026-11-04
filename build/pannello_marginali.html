@@ -574,7 +574,9 @@ function avviso(cls, html) {
 /* Una coropleta dei comuni coperti, non solo un modo di navigare. Alla
    v0.15 diceva cosa NON copriamo (undici su 328); alla v0.16 la copertura
    e' l'oggetto — 245 comuni ER su 330, il 95% della popolazione — e il
-   limite si legge nel grigio degli 85 sotto soglia.
+   limite si legge nel grigio degli 85 sotto soglia. Alla v2.1 (revisione
+   IJM, 11/2026) i comuni sono tutti e 330: il grigio sparisce e la nota
+   dice dove la qualita' degrada invece di chi manca.
 
    Geometrie da build/geo_comuni.py (dissolve delle sezioni, 302 KB);
    baricentri della popolazione da build_indice.py per le pastiglie fuori
@@ -792,9 +794,9 @@ function disegnaAtlante() {
     (fuori.length ? T`, piu' ${fuori.map((k) => k.nome).join(", ")} fuori
       regione — pool AVQ diverso, quindi <b>n_eff</b> diverso` : "") +
     T`. Colore: <b>${etich[ind2] || ind2}</b> della popolazione sintetica,
-      in scala di rango. In grigio i comuni sotto la soglia di inclusione
-      (meno di 3.000 abitanti: il campione sarebbe piu' piccolo del
-      supporto del modello). Clicca per la scheda.`;
+      in scala di rango. Sotto i 3.000 abitanti le celle piu' fini
+      contano pochi individui: leggerle come ordini di grandezza, non come
+      conteggi. Clicca per la scheda.`;
 }
 
 function cartaComune(cod) {
