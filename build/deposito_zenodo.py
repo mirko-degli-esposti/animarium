@@ -289,9 +289,8 @@ say how much a different draw would change it.
   `provenienza.csv` gives, per file, the pipeline run, its commit, the
   number of individuals and households and the SHA-256.
   `SHA256SUMS-replicates.txt` verifies the extracted archive.
-  The replicates were produced at pipeline commit `c972091` (branch
-  `misure-ijm`), whose generation chain is identical to tag `{args.tag}`:
-  with the production seed it reproduces the release byte for byte.
+  The replicates come from the generation chain of tag `{args.tag}`,
+  with only the seeds changed.
 - `variabilita_sezioni.csv.gz` — one row per municipality and census
   section (`cod`, `sezione`). For each of five counts, the value in the
   release (`_seme42`) and the mean and standard deviation (`_media`,
