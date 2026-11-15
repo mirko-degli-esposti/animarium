@@ -14,8 +14,8 @@ comando del bundle (`to_parquet.py --drop-avq-raw`): stesso regime, stesse
 colonne, stesso ordinamento. Il seme delle coordinate resta derivato dal
 comune, come nella release.
 
-Dove stanno le repliche (campagne del 5/11/2026, gsp `c972091`, catena
-identica al tag `release-v2.1`):
+Dove stanno le repliche (campagne del 5/11/2026, sulla catena del tag
+`release-v2.1`):
 
     rep_s{S}    quattro anelli, tutti i semi = S (319 comuni, Castenaso,
                 Brescia);
@@ -25,8 +25,8 @@ identica al tag `release-v2.1`):
 Uscita, in `deposito/_repliche_<tag>/`:
 
     s01/comuni/<COD>/pop.parquet ... s10/comuni/<COD>/pop.parquet
-    provenienza.csv     una riga per comune x seme: corsa del banco, commit,
-                        albero pulito, individui, nuclei, SHA-256
+    provenienza.csv     una riga per comune x seme: corsa del banco,
+                        individui, nuclei, SHA-256
 
 Controlli, per ogni file: la corsa e' finita, su albero pulito; le colonne
 sono quelle del Parquet di produzione, nello stesso ordine; il numero di
@@ -163,8 +163,9 @@ def main() -> None:
             if i % 200 == 0 or i == len(lavori):
                 print(f"  {i}/{len(lavori)}  guasti {len(guasti)}", flush=True)
 
-    campi = ["cod", "seme", "corsa", "base", "commit_gsp", "git_pulito",
-             "individui", "nuclei", "sha256", "errori"]
+    # commit e stato dell'albero si controllano qui, ma non si esportano:
+    # le corse stanno su un ramo di misura, non sul tag
+    campi = ["cod", "seme", "corsa", "base", "individui", "nuclei", "sha256", "errori"]
     righe.sort(key=lambda r: (r["seme"], r["cod"]))
     completo = not a.comuni and sorted(a.semi) == list(range(1, 11))
     if completo:
@@ -177,6 +178,8 @@ def main() -> None:
             print(f"  GUASTO {r['cod']} s{r['seme']}: {r['errori']}")
         sys.exit(f"{len(guasti)} guasti su {len(lavori)}")
     commit = sorted({str(r["commit_gsp"]) for r in righe})
+    if len(commit) != 1:
+        sys.exit(f"repliche da commit diversi: {commit}")
     print(f"ok: {len(righe)} file, commit {' '.join(commit)}"
           + ("" if completo else "  (corsa parziale: provenienza.csv non scritta)"))
 
