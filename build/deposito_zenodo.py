@@ -7,8 +7,9 @@ Prepara il deposito Zenodo del dataset e, a richiesta, lo carica come BOZZA.
 
 Due sottocomandi
 ----------------
-    python build/deposito_zenodo.py pack   --tag release-v2.0
-    python build/deposito_zenodo.py upload --tag release-v2.0 [--sandbox]
+    python build/deposito_zenodo.py pack   --tag release-v2.1 [--variabilita F]
+    python build/deposito_zenodo.py upload --tag release-v2.1 \
+                                           [--nuova-versione-di ID] [--sandbox]
 
 `pack` produce in `deposito/<tag>/`:
     animarium_dataset_<tag>.zip     il bundle intero + i report per comune
@@ -17,9 +18,19 @@ Due sottocomandi
     ATTRIBUZIONI.md                 copia da gsp/fonti/ (obbligo CC-BY)
     LICENSE-DATA.txt                CC-BY-4.0
     README.md                       cosa c'e', come si verifica, come si cita
+e, se ci sono (dalla v2.1):
+    animarium_replicates_<tag>.zip  le repliche con altri semi, esportate da
+                                    build/esporta_repliche.py: facoltativo
+    SHA256SUMS-replicates.txt       impronte dei file delle repliche
+    variabilita_sezioni.csv.gz      media e sd fra repliche, per sezione
+                                    (--variabilita: la tabella sta nel
+                                    repository del paper)
 
-`upload` crea una NUOVA deposizione su Zenodo, carica i cinque file, imposta
-i metadati e SI FERMA: la pubblicazione (che assegna il DOI ed e'
+`upload` crea una deposizione su Zenodo, carica i file, imposta i metadati
+e SI FERMA. Con `--nuova-versione-di ID` (l'id di una versione pubblicata,
+per la v2.0 e' 22647404) la bozza e' una NUOVA VERSIONE dello stesso record:
+stesso concept DOI, nuovo version DOI; i file ereditati dalla versione
+precedente vengono tolti dalla bozza. Senza, e' un record nuovo. In ogni caso la pubblicazione (che assegna il DOI ed e'
 irreversibile) si fa a mano dalla pagina web, dopo aver riletto tutto.
 Rilanciato, salta i file gia' presenti nella bozza: e' l'unica forma di
 ripresa che l'API offre, ma basta con una rete che cade.
@@ -60,24 +71,50 @@ AUTORE = {
 }
 TITOLO = "Animarium — synthetic populations of {n} Italian municipalities ({tag})"
 DESCRIZIONE = """\
-<p>Synthetic populations of {n} Italian municipalities — every municipality of
-Emilia-Romagna above 3,000 inhabitants, plus Brescia — at the reference date of
+<p>Synthetic populations of {n} Italian municipalities — all 330
+municipalities of Emilia-Romagna, plus Brescia — at the reference date of
 1 January 2024: {pop:,} individuals in {hh:,} households, generated from
 published aggregates alone (ISTAT census and register tables, census-section
 counts, the national address register, public-use survey microdata, municipal
 open data) by a maximum-entropy pipeline. Individuals are placed to census
-section, year of age and address; households satisfy the census size
-distribution section by section.</p>
-<p>The archive contains, per municipality, <code>pop.parquet</code> (the public
-release regime: no names, no addresses, coordinates randomised within the
-census section), <code>manifest.json</code>, <code>riferimenti.json</code>,
+section, year of age and address; households are built section by section
+against the census household-size distribution.</p>
+<p><code>animarium_dataset_{tag}.zip</code> is the release. It contains, per
+municipality, <code>pop.parquet</code> (the public release regime: no names,
+no addresses, coordinates randomised within the census section),
+<code>manifest.json</code>, <code>riferimenti.json</code>,
 <code>rif_nuclei.json</code> and the per-municipality <code>report.md</code>
 written by the pipeline, plus the fleet index and national reference means.
 <code>SHA256SUMS.txt</code> lists the fingerprint of every file: the release is
 reproducible byte for byte from the pipeline at tag <code>{tag}</code>.</p>
+{repliche}<p><strong>Changes since v2.0.</strong> (1) 86 municipalities added: the
+v2.0 archive held 245, this one holds all 330 municipalities of the region,
+plus Brescia. Quality degrades gradually as municipalities get smaller; the
+accompanying paper reports it by population band. (2) Single year of age
+corrected: within each five-year class, years of age now follow the municipal
+register distribution, which v2.0 distorted. Age classes, and every other
+attribute of the individuals, are unchanged in the 245 municipalities of v2.0;
+households were regenerated. (3) In three very small municipalities
+(Montecopiolo, Casteldelci, Zerba) the fit is computed by iterative
+proportional fitting, because the dual solver does not converge there.</p>
 <p>Data under CC-BY-4.0, inheriting the attributions in
 <code>ATTRIBUZIONI.md</code>. Code (MIT) and viewer: see related identifiers.
 Browse the populations at <a href="https://animarium.it">animarium.it</a>.</p>
+"""
+DESCR_REPLICHE = """\
+<p><code>animarium_replicates_{tag}.zip</code> is optional. The release is one
+draw (production seed); this archive holds {nrep} more draws of every
+municipality, generated by the same chain with seeds 1–{nrep} and exported in
+the same public regime (<code>sNN/comuni/&lt;code&gt;/pop.parquet</code>, with
+<code>provenienza.csv</code> recording the run, the commit and the fingerprint
+of each file). <code>variabilita_sezioni.csv.gz</code> summarises them for
+those who do not want to handle eleven populations: for every census section,
+the count in the release and the mean and standard deviation across the eleven
+draws of residents, foreign citizens, residents aged 75 and over, those aged
+75 and over living alone, and those aged 75 and over with at most lower
+secondary education. Counts that cross attributes or households vary by
+20–40% from draw to draw at the scale of a single section, and stabilise only
+when sections are aggregated.</p>
 """
 KEYWORDS = ["synthetic population", "spatial microsimulation", "maximum entropy",
             "open data", "census", "Italy", "Emilia-Romagna", "agent-based modelling"]
@@ -162,9 +199,20 @@ def pack(args: argparse.Namespace) -> None:
             entrate.append((rep, f"comuni/{c}/report.md"))
         else:
             print(f"  [avviso] manca report.md per {c}")
-    for nome in ("comuni.json", "medie_nazionali.json"):
-        if (bundle / nome).exists():
-            entrate.append((bundle / nome, nome))
+    # l'indice del bundle elenca anche i comuni che il viewer mostra ma il
+    # deposito non contiene (collaudo): nell'archivio va solo chi c'e'
+    ind = json.load(open(bundle / "comuni.json"))
+    fuori = [c["nome"] for c in ind["comuni"] if c["codice"] not in comuni]
+    ind["comuni"] = [c for c in ind["comuni"] if c["codice"] in comuni]
+    if len(ind["comuni"]) != len(comuni):
+        sys.exit("errore: l'indice del bundle non copre i comuni del deposito")
+    if fuori:
+        print(f"  indice: tolti {len(fuori)} comuni fuori deposito ({', '.join(fuori)})")
+    f_ind = out / ".comuni.json"
+    f_ind.write_text(json.dumps(ind, ensure_ascii=False, indent=1) + "\n")
+    entrate.append((f_ind, "comuni.json"))
+    if (bundle / "medie_nazionali.json").exists():
+        entrate.append((bundle / "medie_nazionali.json", "medie_nazionali.json"))
 
     manca = [c for c in comuni if not (bundle / "comuni" / c / "rif_nuclei.json").exists()]
     if manca:
@@ -193,6 +241,32 @@ def pack(args: argparse.Namespace) -> None:
     righe.append(f"{sha256(zpath)}  {zpath.name}")
     (out / "SHA256SUMS.txt").write_text("\n".join(righe) + "\n")
 
+    # 3b. le repliche, se esportate (build/esporta_repliche.py): archivio a parte
+    rep = RADICE / "deposito" / f"_repliche_{args.tag}"
+    nrep = 0
+    if (rep / "provenienza.csv").exists():
+        semi = sorted(d.name for d in rep.iterdir() if d.is_dir())
+        nrep = len(semi)
+        ent_r = [(rep / "provenienza.csv", "provenienza.csv")]
+        for sd in semi:
+            presenti = sorted(d.name for d in (rep / sd / "comuni").iterdir())
+            if presenti != comuni:
+                sys.exit(f"errore: le repliche {sd} non coprono i {len(comuni)} comuni")
+            ent_r += [(rep / sd / "comuni" / c / "pop.parquet",
+                       f"{sd}/comuni/{c}/pop.parquet") for c in comuni]
+        righe_r = [f"{sha256(p)}  {nome}" for p, nome in ent_r]
+        zrep = out / f"animarium_replicates_{args.tag}.zip"
+        with zipfile.ZipFile(zrep, "w", compression=zipfile.ZIP_STORED) as z:
+            for p, nome in ent_r:
+                z.write(p, nome)
+        righe_r.append(f"{sha256(zrep)}  {zrep.name}")
+        (out / "SHA256SUMS-replicates.txt").write_text("\n".join(righe_r) + "\n")
+        print(f"repliche: {nrep} semi, {len(ent_r)} file")
+    else:
+        print("  [avviso] nessuna replica esportata: deposito senza archivio delle repliche")
+    if args.variabilita:
+        shutil.copy(args.variabilita, out / "variabilita_sezioni.csv.gz")
+
     # 4. i file sciolti
     attr = GSP / "fonti" / "ATTRIBUZIONI.md"
     if attr.exists():
@@ -203,6 +277,33 @@ def pack(args: argparse.Namespace) -> None:
     (out / "LICENSE-DATA.txt").write_text(LICENZA_DATI)
 
     pop, hh = totali(bundle, comuni)
+    testo_repliche = "" if not nrep else f"""
+## Replicates (optional)
+
+The release is one draw of each population (production seed). Two files
+say how much a different draw would change it.
+
+- `animarium_replicates_{args.tag}.zip` — {nrep} more draws of every
+  municipality (seeds 1–{nrep}), same chain, same public regime:
+  `sNN/comuni/<ISTAT code>/pop.parquet`, same columns as the release.
+  `provenienza.csv` gives, per file, the pipeline run, its commit, the
+  number of individuals and households and the SHA-256.
+  `SHA256SUMS-replicates.txt` verifies the extracted archive.
+  The replicates were produced at pipeline commit `c972091` (branch
+  `misure-ijm`), whose generation chain is identical to tag `{args.tag}`:
+  with the production seed it reproduces the release byte for byte.
+- `variabilita_sezioni.csv.gz` — one row per municipality and census
+  section (`cod`, `sezione`). For each of five counts, the value in the
+  release (`_seme42`) and the mean and standard deviation (`_media`,
+  `_sd`) across the {nrep + 1} draws: `pop` residents; `stranieri` foreign
+  citizens; `over75` aged 75 and over; `over75_soli` aged 75 and over
+  living alone; `bersaglio` aged 75 and over with at most lower secondary
+  education. Population and age are nearly fixed by the constraints;
+  counts that cross attributes or households vary by 20–40% from draw to
+  draw in a single section, and stabilise only when sections are
+  aggregated. Use the release for maps and totals; use the replicates,
+  or this table, before reading a small count in a single section.
+"""
     readme = f"""# Animarium — synthetic populations, {args.tag}
 
 {len(comuni)} municipalities · {pop:,} individuals · {hh:,} households ·
@@ -218,7 +319,7 @@ reference date 1 January {args.anno}
   archive itself. Verify with `sha256sum -c SHA256SUMS.txt` after extraction.
 - `ATTRIBUZIONI.md` — the attributions this data inherits (CC-BY).
 - `LICENSE-DATA.txt` — CC-BY-4.0.
-
+{testo_repliche}
 ## Provenance
 
 Generated by the GSP pipeline at tag `{args.tag}`
@@ -226,6 +327,20 @@ Generated by the GSP pipeline at tag `{args.tag}`
 aggregates and municipal open data alone. Every file is reproducible byte
 for byte from that tag; the pipeline's per-municipality `report.md`
 records the sources, the fit and the checks for each municipality.
+
+## Changes since v2.0
+
+- 86 municipalities added: v2.0 held 245, this release holds all 330
+  municipalities of Emilia-Romagna, plus Brescia. Quality degrades
+  gradually as municipalities get smaller; the accompanying paper reports
+  it by population band.
+- Single year of age corrected: within each five-year class, years of age
+  now follow the municipal register distribution, which v2.0 distorted.
+  Age classes and every other attribute of the individuals are unchanged
+  in the 245 municipalities of v2.0; households were regenerated.
+- In three very small municipalities (Montecopiolo, Casteldelci, Zerba)
+  the fit is computed by iterative proportional fitting, because the dual
+  solver does not converge there.
 
 The populations are simulated from aggregates, not anonymised from
 records: no released component derives from an identifiable person.
@@ -247,7 +362,8 @@ https://doi.org/[DOI assigned on publication]
     print(f"\npronto in {out}/")
     for f in sorted(out.iterdir()):
         print(f"  {f.name:<40} {mb(f.stat().st_size):>10}")
-    print("\nprossimo passo: python build/deposito_zenodo.py upload --tag", args.tag)
+    print("\nprossimo passo: python build/deposito_zenodo.py upload --tag", args.tag,
+          "[--nuova-versione-di ID]")
 
 
 # ------------------------------------------------------------------ upload --
@@ -271,10 +387,25 @@ def upload(args: argparse.Namespace) -> None:
         dep = json.load(open(stato))
         print(f"riprendo la bozza {dep['id']}")
     else:
-        r = requests.post(f"{base}/api/deposit/depositions", json={}, headers=H)
-        r.raise_for_status()
-        dep = r.json()
-        json.dump(dep, open(stato, "w"))
+        if args.nuova_versione_di:
+            r = requests.post(f"{base}/api/deposit/depositions/"
+                              f"{args.nuova_versione_di}/actions/newversion", headers=H)
+            r.raise_for_status()
+            r = requests.get(r.json()["links"]["latest_draft"], headers=H)
+            r.raise_for_status()
+            dep = r.json()
+            json.dump(dep, open(stato, "w"))
+            # la bozza eredita i file della versione precedente: si tolgono
+            for f in requests.get(f"{base}/api/deposit/depositions/{dep['id']}/files",
+                                  headers=H).json():
+                requests.delete(f"{base}/api/deposit/depositions/{dep['id']}/files/"
+                                f"{f['id']}", headers=H).raise_for_status()
+                print(f"  tolto dalla bozza (versione precedente): {f['filename']}")
+        else:
+            r = requests.post(f"{base}/api/deposit/depositions", json={}, headers=H)
+            r.raise_for_status()
+            dep = r.json()
+            json.dump(dep, open(stato, "w"))
         print(f"creata la bozza {dep['id']}: {dep['links']['html']}")
 
     bucket = dep["links"]["bucket"]
@@ -293,12 +424,20 @@ def upload(args: argparse.Namespace) -> None:
         r.raise_for_status()
         print(" ok")
 
-    comuni = comuni_del_bundle(RADICE / "bundle", set(args.escludi))
+    ammessi = flotta_dal_registro()
+    comuni = [c for c in comuni_del_bundle(RADICE / "bundle", set(args.escludi))
+              if c in ammessi]
     pop, hh = totali(RADICE / "bundle", comuni)
+    rep = RADICE / "deposito" / f"_repliche_{args.tag}"
+    nrep = (len([d for d in rep.iterdir() if d.is_dir()])
+            if (out / f"animarium_replicates_{args.tag}.zip").exists() else 0)
+    repliche = DESCR_REPLICHE.format(tag=args.tag, nrep=nrep) if nrep else ""
     meta = {"metadata": {
         "title": TITOLO.format(n=len(comuni), tag=args.tag),
         "upload_type": "dataset",
-        "description": DESCRIZIONE.format(n=len(comuni), tag=args.tag, pop=pop, hh=hh),
+        "description": DESCRIZIONE.format(n=len(comuni), tag=args.tag, pop=pop, hh=hh,
+                                          repliche=repliche),
+        "publication_date": date.today().isoformat(),
         "creators": [{k: v for k, v in AUTORE.items() if v}],
         "license": "cc-by-4.0",
         "keywords": KEYWORDS,
@@ -325,12 +464,16 @@ def main() -> None:
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--escludi", nargs="*", default=[],
                    help="codici ISTAT da non depositare (collaudo, pilota, sotto soglia)")
+    p.add_argument("--variabilita", default=None,
+                   help="tabella di variabilita' per sezione (csv.gz) da allegare")
     p.set_defaults(fn=pack)
     u = sub.add_parser("upload", help="crea la BOZZA su Zenodo e carica i file")
     u.add_argument("--tag", required=True)
     u.add_argument("--sandbox", action="store_true")
     u.add_argument("--escludi", nargs="*", default=[],
                    help="codici ISTAT da non depositare (collaudo, pilota, sotto soglia)")
+    u.add_argument("--nuova-versione-di", default=None, metavar="ID",
+                   help="id Zenodo di una versione pubblicata: la bozza ne e' la nuova versione")
     u.set_defaults(fn=upload)
     args = ap.parse_args()
     args.fn(args)

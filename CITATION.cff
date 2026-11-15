@@ -8,8 +8,8 @@ authors:
     orcid: "https://orcid.org/0000-0003-0316-3449"
     affiliation: "Department of Physics and Astronomy (DIFA), University of Bologna"
     email: mirko.degliesposti@unibo.it
-version: 1.0.0
-date-released: 2026-XX-XX
+version: 2.1
+date-released: 2026-11-15
 license: MIT
 repository-code: "https://github.com/mirko-degli-esposti/Animarium"
 url: "https://animarium.pages.dev"
